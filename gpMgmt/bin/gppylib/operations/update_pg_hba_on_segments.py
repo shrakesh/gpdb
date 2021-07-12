@@ -68,19 +68,31 @@ def update_on_segments(update_cmds, batch_size):
         logger.error("Unable to update pg_hba.conf on the primary segments")
         raise Exception("Unable to update pg_hba.conf on the primary segments.")
 
-def update_pg_hba_on_segments(gpArray, hba_hostnames, batch_size, 
+def update_pg_hba_on_segments(gpArray, hba_hostnames, batch_size,unreachable_hosts=[],
                               contents_to_update=None):
     logger.info("Starting to create new pg_hba.conf on primary segments")
     update_cmds = []
     for segmentPair in gpArray.getSegmentList():
+        host = []
         # We cannot update the pg_hba.conf which uses ssh for hosts that are unreachable.
-        if segmentPair.primaryDB.unreachable or segmentPair.mirrorDB.unreachable:
+        if segmentPair.primaryDB.unreachable or not segmentPair.mirrorDB or segmentPair.mirrorDB.unreachable:
             continue
         if contents_to_update and not segmentPair.primaryDB.getSegmentContentId() in contents_to_update:
             continue
 
         primary_hostname = segmentPair.primaryDB.getSegmentHostName()
         mirror_hostname = segmentPair.mirrorDB.getSegmentHostName()
+
+        if primary_hostname in unreachable_hosts:
+            host = primary_hostname
+        elif mirror_hostname in unreachable_hosts:
+            host = mirror_hostname
+
+        if host:
+            logger.warning(
+                "Manual update of the pg_hba_conf files for all segments on unreachable host %s will be required." % host)
+            continue
+
         entries = create_entries(primary_hostname, mirror_hostname, hba_hostnames)
 
         update_cmds.append(SegUpdateHba(entries, segmentPair.primaryDB.datadir,
