@@ -372,21 +372,21 @@ SED_PG_CONF () {
 			else
 				SED_COMMAND="s/${SEARCH_TXT}.*/${SUB_TXT}/"
 			fi
-			$TRUSTED_SHELL $SED_HOST sed -i'.bak1' -f /dev/stdin "$FILENAME" <<< "$SED_COMMAND" > /dev/null 2>&1
+			$TRUSTED_SHELL $SED_HOST sed -i'.bak1' -f /dev/stdin "$FILENAME" <<< "$SED_COMMAND" > ${LOG_FILE} 2>&1
 			if [ $RETVAL -ne 0 ]; then
 				ERROR_EXIT "[FATAL]:-Failed to insert $SUB_TXT in $FILENAME on $SED_HOST"
 			else
 				LOG_MSG "[INFO]:-Replaced line in $FILENAME on $SED_HOST"
-				$TRUSTED_SHELL $SED_HOST "$RM -f ${FILENAME}.bak1" > /dev/null 2>&1
+				$TRUSTED_SHELL $SED_HOST "$RM -f ${FILENAME}.bak1" > ${LOG_FILE} 2>&1
 			fi
 
 			SED_COMMAND="s/^#${SEARCH_TXT}/${SEARCH_TXT}/"
-			$TRUSTED_SHELL $SED_HOST sed -i'.bak2' -f /dev/stdin "$FILENAME" <<< "$SED_COMMAND" > /dev/null 2>&1
+			$TRUSTED_SHELL $SED_HOST sed -i'.bak2' -f /dev/stdin "$FILENAME" <<< "$SED_COMMAND" > ${LOG_FILE} 2>&1
 			if [ $RETVAL -ne 0 ]; then
 				ERROR_EXIT "[FATAL]:-Failed to substitute #${SEARCH_TXT} in $FILENAME on $SED_HOST"
 			else
 				LOG_MSG "[INFO]:-Replaced line in $FILENAME on $SED_HOST"
-				$TRUSTED_SHELL $SED_HOST "$RM -f ${FILENAME}.bak2" > /dev/null 2>&1
+				$TRUSTED_SHELL $SED_HOST "$RM -f ${FILENAME}.bak2" > ${LOG_FILE} 2>&1
 			fi
 		fi
 
