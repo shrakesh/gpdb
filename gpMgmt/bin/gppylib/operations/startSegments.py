@@ -7,6 +7,7 @@ from gppylib.commands import gp
 from gppylib.commands import base
 from gppylib.gparray import GpArray
 from gppylib.commands.gp import SEGMENT_TIMEOUT_DEFAULT
+from gppylib.mainUtils import parseStatusLine
 
 logger = get_default_logger()
 
