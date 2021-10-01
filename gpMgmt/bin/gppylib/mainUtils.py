@@ -459,3 +459,4 @@ def parseStatusLine(line, gpaction):
     reasonArr = reasonArr[1:]
     reasonStr = ":".join(reasonArr)
     return reasonCode, reasonStr, started, dir
+
