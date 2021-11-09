@@ -4,7 +4,8 @@ import os
 import unittest
 
 from gppylib.mainUtils import ExceptionNoStackTraceNeeded
-from gppylib.operations.initstandby import get_standby_pg_hba_info, update_pg_hba, update_pg_hba_conf_on_segments
+from gppylib.operations.initstandby import get_standby_pg_hba_info, update_pg_hba
+from gppylib.operations.update_pg_hba_on_segments import update_pg_hba_on_segments
 from mock import MagicMock, Mock, mock_open, patch
 
 class InitStandbyTestCase(unittest.TestCase):
@@ -41,6 +42,7 @@ class InitStandbyTestCase(unittest.TestCase):
     @patch('gppylib.operations.initstandby.get_standby_pg_hba_info', return_value='standby ip')
     def test_update_pg_hba_on_segments(self, m1, m2):
         mock_segs = []
+        batch_size = 1
         for i in range(6):
             m = Mock()
             m.getSegmentContentId = Mock()
@@ -48,6 +50,6 @@ class InitStandbyTestCase(unittest.TestCase):
             m.getSegmentDataDirectory.return_value = '/tmp/d%d' % i
             mock_segs.append(m)
         gparray = Mock()
-        gparray.getDbList = Mock()
-        gparray.getDbList.return_value = mock_segs 
-        update_pg_hba_conf_on_segments(gparray, 'standby_host') 
+        gparray.getSegmentList = Mock()
+        gparray.getSegmentList.return_value = mock_segs
+        update_pg_hba_on_segments(gparray, 'standby_host', batch_size)

@@ -239,10 +239,6 @@ class Configuration:
                         self._getParsedRow(lineno, line)
 
                     oldGpdb = lookupGpdb(oldAddress, oldPort, oldDataDirectory)
-                     raise Exception(
-                             "Added exception to compare with centos 7: address = %s, port = %s, segment data directory = %s"
-                                % (oldAddress, str(oldPort), oldDataDirectory))
-
 
                     if oldGpdb is None or oldGpdb.getSegmentRole() != ROLE_MIRROR:
                         if oldGpdb is None:
