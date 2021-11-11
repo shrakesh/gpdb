@@ -129,7 +129,7 @@ host replication gpadmin {ip_primary2}/32 trust"""
         pair0, pair1 = self.gparray.getSegmentList()
         os.environ["GPHOME"] = "/usr/local/gpdb"
         expected_batch_size = 16
-        update_pg_hba_on_segments(self.gparray, False, expected_batch_size, contents_to_update=[0])
+        update_pg_hba_on_segments(self.gparray, False, expected_batch_size, contents_to_update=[], [0])
 
         self.assertEqual(mock_update.call_count, 1)
         mock_call_args = mock_update.call_args[0]
