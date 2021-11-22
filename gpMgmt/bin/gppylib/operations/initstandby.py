@@ -148,42 +148,6 @@ def update_pg_hba(standby_pg_hba_info, data_dirs_list):
         pg_hba_content_list.append(pg_hba_contents)
     return pg_hba_content_list
 
-def update_pg_hba_conf_on_segments(gparr, standby_host, is_hba_hostnames=False):
-    """
-    Updates the pg_hba.conf on all of the segments 
-    present in the array
-    """
-    logger.debug('Updating pg_hba.conf file on segments...')
-    standby_pg_hba_info = get_standby_pg_hba_info(standby_host, is_hba_hostnames)
-    pickled_standby_pg_hba_info = base64.urlsafe_b64encode(pickle.dumps(standby_pg_hba_info))
-
-    host_to_seg_map = defaultdict(list) 
-    for seg in gparr.getDbList():
-        if not seg.isSegmentMaster() and not seg.isSegmentStandby():
-            host_to_seg_map[seg.getSegmentHostName()].append(seg.getSegmentDataDirectory())
-
-    pool = WorkerPool(numWorkers=DEFAULT_BATCH_SIZE)
-
-    try:
-        for host, data_dirs_list in host_to_seg_map.items():
-            pickled_data_dirs_list = base64.urlsafe_b64encode(pickle.dumps(data_dirs_list))
-            cmdStr = "$GPHOME/lib/python/gppylib/operations/initstandby.py -p %s -d %s" % (pickled_standby_pg_hba_info, pickled_data_dirs_list)
-            cmd = Command('Update the pg_hba.conf on remote hosts', cmdStr=cmdStr, ctxt=REMOTE, remoteHost=host)
-            pool.addCommand(cmd)
-
-        pool.join()
-
-        for item in pool.getCompletedItems():
-            result = item.get_results()
-            if result.rc != 0:
-                logger.error('Unable to update pg_hba.conf %s' % str(result.stderr))
-                logger.error('Please check the segment log file for more details')
-
-    finally:
-        pool.haltWork()
-        pool.joinWorkers()
-        pool = None
-
 def create_parser():
     parser = OptParser(option_class=OptChecker,
                        description='update the pg_hba.conf on all segments')
