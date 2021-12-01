@@ -74,7 +74,7 @@ def update_pg_hba_on_segments(gpArray, hba_hostnames, batch_size, unreachable_ho
     update_cmds = []
 
     for segmentPair in gpArray.getSegmentList():
-        host = None
+        seg_host = []
         # We cannot update the pg_hba.conf which uses ssh for hosts that are unreachable.
         if segmentPair.primaryDB.unreachable or not segmentPair.mirrorDB or segmentPair.mirrorDB.unreachable:
             continue
@@ -85,13 +85,14 @@ def update_pg_hba_on_segments(gpArray, hba_hostnames, batch_size, unreachable_ho
         mirror_hostname = segmentPair.mirrorDB.getSegmentHostName()
 
         if primary_hostname in unreachable_hosts:
-            host = primary_hostname
-        elif mirror_hostname in unreachable_hosts:
-            host = mirror_hostname
+            seg_host.append(primary_hostname)
+        if mirror_hostname in unreachable_hosts:
+            seg_host.append(mirror_hostname)
 
-        if host:
-            logger.warning(
-                "Manual update of the pg_hba_conf files for all segments on unreachable host %s will be required." % host)
+        if len(seg_host) > 0:
+            for host in seg_host:
+                logger.warning(
+                    "Manual update of the pg_hba_conf files for all segments on unreachable host %s will be required." % host)
             continue
 
         entries = create_entries(primary_hostname, mirror_hostname, hba_hostnames)

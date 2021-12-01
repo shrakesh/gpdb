@@ -53,3 +53,59 @@ class InitStandbyTestCase(unittest.TestCase):
         gparray.getSegmentList = Mock()
         gparray.getSegmentList.return_value = mock_segs
         update_pg_hba_on_segments(gparray, 'standby_host', batch_size)
+
+    @patch('gppylib.operations.update_pg_hba_on_segments.create_entries')
+    @patch('gppylib.operations.update_pg_hba_on_segments.SegUpdateHba')
+    def test_update_pg_hba_on_unreachable_segments(self, m1, m2):
+        mock_segs = []
+        batch_size = 1
+        for i in range(6):
+            m = Mock()
+            m.getSegmentContentId = Mock()
+            m.getSegmentContentId.return_value = (i % 3) + 1
+            m.getSegmentDataDirectory.return_value = '/tmp/d%d' % i
+            m.primaryDB = Mock()
+            m.primaryDB.unreachable = False
+            m.primaryDB.getSegmentHostName = Mock()
+            m.primaryDB.getSegmentHostName.return_value = 'seg%d' % i
+            m.mirrorDB = Mock()
+            m.mirrorDB.unreachable = False
+            m.mirrorDB.getSegmentHostName = Mock()
+            m.mirrorDB.getSegmentHostName.return_value = 'mir%d' % i
+            mock_segs.append(m)
+        gparray = Mock()
+        gparray.getSegmentList = Mock()
+        gparray.getSegmentList.return_value = mock_segs
+
+        #check when one of the mirror node is unavailable
+        mock_segs[0].mirrorDB = None
+        try:
+            update_pg_hba_on_segments(gparray, 'standby_host', batch_size)
+        except AttributeError as e:
+            self.assertTrue(False)
+        mock_segs[0].mirrorDB = Mock()
+
+        # no warning message when all nodes are reachable
+        with self.assertNoLogs(level='WARNING'):
+            update_pg_hba_on_segments(gparray, 'standby_host', batch_size)
+
+        # warning message when one of the primary node is not reachable
+        with self.assertLogs(level='WARNING') as cm:
+            update_pg_hba_on_segments(gparray, 'standby_host', batch_size, ['seg1'])
+            self.assertEqual(cm.output[0],
+                             'WARNING:default:Manual update of the pg_hba_conf files for all segments on unreachable host seg1 will be required.')
+
+        # warning message when one of the mirror node is not reachable
+        with self.assertLogs(level='WARNING') as cm:
+            update_pg_hba_on_segments(gparray, 'standby_host', batch_size, ['mir1'])
+            self.assertEqual(cm.output[0],
+                             'WARNING:default:Manual update of the pg_hba_conf files for all segments on unreachable host mir1 will be required.')
+
+        # warning message when both primary and mirror node is not reachable
+        with self.assertLogs(level='WARNING') as cm:
+            update_pg_hba_on_segments(gparray, 'standby_host', batch_size, ['seg1', 'mir1'])
+            self.assertEqual(cm.output[0],
+                             'WARNING:default:Manual update of the pg_hba_conf files for all segments on unreachable host seg1 will be required.')
+            self.assertEqual(cm.output[1],
+                             'WARNING:default:Manual update of the pg_hba_conf files for all segments on unreachable host mir1 will be required.')
+
