@@ -40,6 +40,7 @@ try:
     from gppylib.heapchecksum import HeapChecksum
     from gppylib.commands.pg import PgBaseBackup
     from gppylib.mainUtils import ExceptionNoStackTraceNeeded
+    from gppylib.operations.update_pg_hba_on_segments import update_pg_hba_on_segments
 
 except ImportError as e:
     sys.exit('ERROR: Cannot import modules.  Please check that you have sourced greenplum_path.sh.  Detail: ' + str(e))
@@ -831,15 +832,18 @@ class SegmentTemplate:
 
         # Now update the primary's hba config with the corresponding primary
         # and mirror information
-        for seg in self.gparray.getExpansionSegDbList():
-            if seg.isSegmentPrimary():
-                modifyConfCmd = ModifyPgHbaConfSetting(
-                        'Updating %s/pg_hba.conf' % seg.getSegmentHostName(),
-                        os.path.join(seg.getSegmentDataDirectory(), 'pg_hba.conf'),
-                        ctxt=REMOTE, remoteHost=seg.getSegmentHostName(),
-                        addresses=m[seg.getSegmentContentId()],
-                        is_hba_hostnames=self.isHbaHostnames)
-                self.pool.addCommand(modifyConfCmd)
+
+        update_pg_hba_on_segments(self.gparray, self.isHbaHostnames, self.batch_size)
+
+        # for seg in self.gparray.getExpansionSegDbList():
+        #     if seg.isSegmentPrimary():
+        #         modifyConfCmd = ModifyPgHbaConfSetting(
+        #                 'Updating %s/pg_hba.conf' % seg.getSegmentHostName(),
+        #                 os.path.join(seg.getSegmentDataDirectory(), 'pg_hba.conf'),
+        #                 ctxt=REMOTE, remoteHost=seg.getSegmentHostName(),
+        #                 addresses=m[seg.getSegmentContentId()],
+        #                 is_hba_hostnames=self.isHbaHostnames)
+        #         self.pool.addCommand(modifyConfCmd)
 
         self.pool.join()
         self.pool.check_results()
