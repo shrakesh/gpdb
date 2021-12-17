@@ -48,8 +48,8 @@ def create_entries(primary_hostname, mirror_hostname, hba_hostnames):
             entries.append(hba_line_entry)
     return entries
 
-def update_on_segments(update_cmds, batch_size):
 
+def update_on_segments(update_cmds, batch_size):
     num_workers = min(batch_size, len(update_cmds))
     pool = WorkerPool(num_workers)
     for uc in update_cmds:
@@ -63,8 +63,8 @@ def update_on_segments(update_cmds, batch_size):
     for cmd in pool.getCompletedItems():
         r = cmd.get_results()
         if not cmd.was_successful():
-           logger.error("Unable to update pg_hba conf on primary segment: " + str(r))
-           failure = True
+            logger.error("Unable to update pg_hba conf on primary segment: " + str(r))
+            failure = True
 
     pool.haltWork()
     pool.joinWorkers()

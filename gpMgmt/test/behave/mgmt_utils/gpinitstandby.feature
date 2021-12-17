@@ -67,6 +67,7 @@ Feature: Tests for gpinitstandby feature
         Given the database is running
           And the standby is not initialized
           And the host for the primary on content 0 is made unreachable
+          And the host for the mirror on content 1 is made unreachable
 
          When the user runs gpinitstandby and accepts the unreachable host prompt
 
@@ -134,9 +135,20 @@ Feature: Tests for gpinitstandby feature
         Then gpinitstandby should return a return code of 0
         And verify that the file "pg_hba.conf" in the coordinator data directory has "no" line starting with "host.*replication.*(127.0.0.1|::1).*trust"
 
-    Scenario: gpinitstandby should not throw error when banner exists on the hsot
+    Scenario: gpinitstandby should not throw error when banner exists on the host
         Given the database is running
         And the standby is not initialized
         When the user sets banner on host
         And the user runs gpinitstandby with options " "
         Then gpinitstandby should return a return code of 0
+
+@concourse_cluster
+Scenario: gpinitstandby should create pg_hba entry to segment primary
+        Given the database is not running
+        And a working directory of the test as '/tmp/gpinitstandby'
+        And a cluster is created with mirrors on "mdw" and "sdw1"
+        And the standby is not initialized
+        When running gpinitstandby on host "mdw" to create a standby on host "sdw1"
+        Then gpinitstandby should return a return code of 0
+        And verify the standby coordinator entries in catalog
+        And verify that pg_hba.conf file has "standby" entries in each segment data directories
