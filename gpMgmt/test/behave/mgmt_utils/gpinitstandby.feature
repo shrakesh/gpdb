@@ -72,7 +72,7 @@ Feature: Tests for gpinitstandby feature
 
          Then gpinitstandby should return a return code of 0
           And gpinitstandby should print "If you continue with initialization, pg_hba.conf files on these hosts will not be updated." to stdout
-          And gpinitstandby should print "Manual update of the pg_hba_conf files for all segments on unreachable host invalid_host will be required." to stdout
+          And gpinitstandby should print "Not updating pg_hba.conf for segments on unreachable hosts: invalid_host.You can manually update pg_hba.conf once you make the hosts reachable." to stdout
           And the cluster is returned to a good state
 
     Scenario: gpinitstandby exits if confirmation is not given when a segment host is unreachable
