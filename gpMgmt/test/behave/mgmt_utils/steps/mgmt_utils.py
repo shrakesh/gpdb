@@ -1825,10 +1825,7 @@ def impl(context, type):
         host, datadir = info
         filename = 'pg_hba.conf'
         # output = "host.*all.*" + standby_host_address + ".*trust"
-        if checkForStandby:
-            output = "host.*all.*" + standby_host_address + ".*trust"
-        else:
-            output = "host.*all.*" + host + ".*trust"
+        output = "host.*all.*" + standby_host_address + ".*trust"
         filepath = os.path.join(datadir, filename)
         regex = "%s%s" % ("^[%s]*", output)
         cmd_str = 'ssh %s "grep -c %s %s"' % (host, regex, filepath)
