@@ -133,7 +133,15 @@ Feature: Tests for gpinitstandby feature
         Then gpinitstandby should return a return code of 0
         And verify that the file "pg_hba.conf" in the coordinator data directory has "no" line starting with "host.*replication.*(127.0.0.1|::1).*trust"
 
-    Scenario: gpinitstandby should create pg_hba entry to segment primary
+    Scenario: gpinitstandby should not throw error when banner exists on the host
+        Given the database is running
+        And the standby is not initialized
+        When the user sets banner on host
+        And the user runs gpinitstandby with options " "
+        Then gpinitstandby should return a return code of 0
+
+@concourse_cluster
+Scenario: gpinitstandby should create pg_hba entry to segment primary
         Given the database is not running
         And a working directory of the test as '/tmp/gpinitstandby'
         And a cluster is created with mirrors on "mdw" and "sdw1"
@@ -144,10 +152,3 @@ Feature: Tests for gpinitstandby feature
 #        And verify that the file "pg_hba.conf" in each segment data directory has "some" line starting with "host.*all.*standby_hostname.*trust"
       # And verify that pg_hba.conf file has "standby" entries in each segment data directories
       # And verify that pg_hba.conf file has "replication" entries in each segment data directories
-
-    Scenario: gpinitstandby should not throw error when banner exists on the host
-        Given the database is running
-        And the standby is not initialized
-        When the user sets banner on host
-        And the user runs gpinitstandby with options " "
-        Then gpinitstandby should return a return code of 0
