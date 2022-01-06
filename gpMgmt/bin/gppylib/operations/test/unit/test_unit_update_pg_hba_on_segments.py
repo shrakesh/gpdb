@@ -175,3 +175,7 @@ host replication gpadmin {ip_primary2}/32 trust"""
         self.assertEqual(len(result_cmds), 1)
         self.assertEqual(result_batch_size, expected_batch_size)
         self.assertEqual(result_cmds[0].cmdStr, expected_string)
+
+
+# test_content_to update
+

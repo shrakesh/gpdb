@@ -906,6 +906,15 @@ def get_standby_host():
     else:
         return []
 
+def get_standby_host_address():
+    gparray = GpArray.initFromCatalog(dbconn.DbURL())
+    segments = gparray.getDbList()
+    standby_coordinator = [seg.getSegmentAddress() for seg in segments if seg.isSegmentStandby()]
+    if len(standby_coordinator) > 0:
+        return standby_coordinator[0]
+    else:
+        return []
+
 
 def run_gpinitstandby(context, hostname, port, standby_data_dir, options='', remote=False):
     if '-n' in options:

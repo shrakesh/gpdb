@@ -9,7 +9,7 @@
                       {'name': 'gpreload',
                        'use_concourse_cluster': false},
                       {'name': 'gpinitsystem',
-                       'use_concourse_cluster': false},
+                       'use_concourse_cluster': true},
                       {'name': 'gpstate',
                        'use_concourse_cluster': true},
                       {'name': 'replication_slots',
