@@ -910,6 +910,7 @@ def get_standby_host_address():
     gparray = GpArray.initFromCatalog(dbconn.DbURL())
     segments = gparray.getDbList()
     standby_coordinator = [seg.getSegmentAddress() for seg in segments if seg.isSegmentStandby()]
+    standby_coordinator = gp.IfAddrs.list_addrs(standby_coordinator)
     if len(standby_coordinator) > 0:
         return standby_coordinator[0]
     else:
