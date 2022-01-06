@@ -149,6 +149,6 @@ Scenario: gpinitstandby should create pg_hba entry to segment primary
         When running gpinitstandby on host "mdw" to create a standby on host "sdw1"
         Then gpinitstandby should return a return code of 0
         And verify the standby coordinator entries in catalog
-#        And verify that the file "pg_hba.conf" in each segment data directory has "some" line starting with "host.*all.*standby_hostname.*trust"
+        And verify that the file "pg_hba.conf" in each segment data directory has "some" line starting with "host.*all.*standby_hostname.*trust"
       # And verify that pg_hba.conf file has "standby" entries in each segment data directories
       # And verify that pg_hba.conf file has "replication" entries in each segment data directories
