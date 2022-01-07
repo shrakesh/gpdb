@@ -473,4 +473,4 @@ Feature: expand the cluster by adding more segments
         When the user runs gpexpand interview to add 0 new segment and 1 new host "sdw2"
         Then the number of segments have been saved
         When the user runs gpexpand with the latest gpexpand_inputfile with additional parameters "--silent"
-        And verify that the file "pg_hba.conf" in each segment data directory has "some" line starting with "<string>"
+        Then verify that pg_hba.conf file has "replication" entries in each segment data directories

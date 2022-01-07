@@ -1805,7 +1805,7 @@ def impl(context, type):
 
     if (type == 'standby'):
         checkForStandby = True
-    elif (type == 'segments'):
+    elif (type == 'replication'):
         checkForStandby = False
     else:
         raise Exception("only 'standby' and 'segments' are valid inputs")

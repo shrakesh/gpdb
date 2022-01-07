@@ -67,7 +67,7 @@ Feature: Tests for gpinitstandby feature
         Given the database is running
           And the standby is not initialized
           And the host for the primary on content 0 is made unreachable
-          And the host for the mirror on content 0 is made unreachable
+          And the host for the mirror on content 1 is made unreachable
 
          When the user runs gpinitstandby and accepts the unreachable host prompt
 
@@ -151,6 +151,4 @@ Scenario: gpinitstandby should create pg_hba entry to segment primary
         When running gpinitstandby on host "mdw" to create a standby on host "sdw1"
         Then gpinitstandby should return a return code of 0
         And verify the standby coordinator entries in catalog
-#        And verify that the file "pg_hba.conf" in each segment data directory has "some" line starting with "host.*all.*standby_hostname.*trust"
-       And verify that pg_hba.conf file has "standby" entries in each segment data directories
-      # And verify that pg_hba.conf file has "replication" entries in each segment data directories
+        And verify that pg_hba.conf file has "standby" entries in each segment data directories
