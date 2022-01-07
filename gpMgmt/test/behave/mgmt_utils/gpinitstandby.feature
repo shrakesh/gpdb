@@ -67,11 +67,13 @@ Feature: Tests for gpinitstandby feature
         Given the database is running
           And the standby is not initialized
           And the host for the primary on content 0 is made unreachable
+          And the host for the mirror on content 0 is made unreachable
 
          When the user runs gpinitstandby and accepts the unreachable host prompt
 
          Then gpinitstandby should return a return code of 0
           And gpinitstandby should print "If you continue with initialization, pg_hba.conf files on these hosts will not be updated." to stdout
+          And gpinitstandby should print "Not updating pg_hba.conf for segments on unreachable hosts: invalid_host.You can manually update pg_hba.conf once you make the hosts reachable." to stdout
           And the cluster is returned to a good state
 
     Scenario: gpinitstandby exits if confirmation is not given when a segment host is unreachable
