@@ -906,17 +906,6 @@ def get_standby_host():
     else:
         return []
 
-def get_standby_host_address():
-    gparray = GpArray.initFromCatalog(dbconn.DbURL())
-    segments = gparray.getDbList()
-    standby_coordinator = [seg.getSegmentAddress() for seg in segments if seg.isSegmentStandby()]
-    if len(standby_coordinator) > 0:
-        standby = gp.IfAddrs.list_addrs(standby_coordinator[0])
-        return standby
-    else:
-        return []
-
-
 def run_gpinitstandby(context, hostname, port, standby_data_dir, options='', remote=False):
     if '-n' in options:
         cmd = "gpinitstandby -a"
@@ -1801,7 +1790,6 @@ def impl(context, filename, some, output):
 @given('verify that pg_hba.conf file has "{type}" entries in each segment data directories')
 @then('verify that pg_hba.conf file has "{type}" entries in each segment data directories')
 def impl(context, type):
-    standby_host_address = get_standby_host_address()
     conn = dbconn.connect(dbconn.DbURL(dbname='template1'), unsetSearchPath=False)
     try:
         curs = dbconn.query(conn,
@@ -1825,8 +1813,13 @@ def impl(context, type):
     for info in segment_info:
         host, datadir = info
         filename = 'pg_hba.conf'
-        # output = "host.*all.*" + standby_host_address + ".*trust"
-        output = "host.*all.*" + standby_host_address + ".*trust"
+        if checkForStandby:
+            standby_host = get_standby_host()
+            standby_host_address = gp.IfAddrs.list_addrs(standby_host)[0]
+            output = "host.*all.*" + standby_host_address + ".*trust"
+        else:
+            output = "host.*replication.*.*trust"
+
         filepath = os.path.join(datadir, filename)
         regex = "%s%s" % ("^[%s]*", output)
         cmd_str = 'ssh %s "grep -c %s %s"' % (host, regex, filepath)
