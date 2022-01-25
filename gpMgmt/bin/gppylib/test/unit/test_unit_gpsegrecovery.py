@@ -135,7 +135,8 @@ class FullRecoveryTestCase(GpTestCase):
         self.assertEqual(1, self.mock_pgbasebackup_run.call_count)
         self.assertEqual(call(validateAfter=True), self.mock_pgbasebackup_run.call_args)
         expected_logger_info_args = [call('Running pg_basebackup with progress output temporarily in /tmp/test_progress_file'),
-                                     call("Successfully ran pg_basebackup for dbid: 2")]
+                                     call("Successfully ran pg_basebackup for dbid: 2"),
+                                     call("Updating /data/mirror0/postgresql.conf")]
         self.assertEqual(expected_logger_info_args, self.mock_logger.info.call_args_list)
         gpsegrecovery.start_segment.assert_called_once_with(self.seg_recovery_info, self.mock_logger, self.era)
 
