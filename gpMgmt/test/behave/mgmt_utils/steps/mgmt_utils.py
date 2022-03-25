@@ -3788,3 +3788,13 @@ def impl(context, content, desired_state):
 
     if len(rows) == 0:
         raise Exception("Expected content %s to be %s." % (content, desired_state))
+
+@when('a demo cluster is created using gpinitsystem args "{args}"')
+def impl(context, args):
+    context.execute_steps('''
+    Given the user runs command "rm -rf ../gpAux/gpdemo/datadirs/*"
+      And the user runs command "mkdir ../gpAux/gpdemo/datadirs/qddir; mkdir ../gpAux/gpdemo/datadirs/dbfast1; mkdir ../gpAux/gpdemo/datadirs/dbfast2; mkdir ../gpAux/gpdemo/datadirs/dbfast3"
+      And the user runs command "mkdir ../gpAux/gpdemo/datadirs/dbfast_mirror1; mkdir ../gpAux/gpdemo/datadirs/dbfast_mirror2; mkdir ../gpAux/gpdemo/datadirs/dbfast_mirror3"
+      And the user runs command "rm -rf /tmp/gpinitsystemtest && mkdir /tmp/gpinitsystemtest"
+     When the user runs "gpinitsystem -a %s -c ../gpAux/gpdemo/clusterConfigFile -l /tmp/gpinitsystemtest -P 21100 -h ../gpAux/gpdemo/hostfile"
+    ''' % args)

@@ -6,6 +6,7 @@ from recovery_base import RecoveryBase, set_recovery_cmd_results
 from gppylib.commands.base import Command
 from gppylib.commands.gp import SegmentStart
 from gppylib.gparray import Segment
+from gppylib.commands.gp import ModifyConfSetting
 
 
 class FullRecovery(Command):
@@ -40,6 +41,14 @@ class FullRecovery(Command):
         self.logger.info("Successfully ran pg_basebackup for dbid: {}".format(self.recovery_info.target_segment_dbid))
         self.error_type = RecoveryErrorType.START_ERROR
         start_segment(self.recovery_info, self.logger, self.era)
+
+        # Updating port number on conf once the segment start after recovery
+        self.error_type = RecoveryErrorType.DEFAULT_ERROR
+        self.logger.info("Updating %s/postgresql.conf" % self.recovery_info.target_datadir)
+        modifyConfCmd = ModifyConfSetting('Updating %s/postgresql.conf' % self.recovery_info.target_datadir,
+                                          self.recovery_info.target_datadir + '/postgresql.conf',
+                                          'port', self.recovery_info.target_port, optType='number')
+        modifyConfCmd.run(validateAfter=True)
 
 
 class IncrementalRecovery(Command):
