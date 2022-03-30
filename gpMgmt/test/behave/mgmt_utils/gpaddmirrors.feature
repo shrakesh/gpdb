@@ -473,3 +473,13 @@ Feature: Tests for gpaddmirrors
          When user stops all primary processes
           And user can start transactions
          Then the tablespace is valid
+
+    @concourse_cluster
+    Scenario: gpaddmirrors should create consistent port entry on mirrors postgresql.conf file
+        Given a working directory of the test as '/tmp/gpaddmirrors'
+        And the database is not running
+        And a cluster is created with no mirrors on "mdw" and "sdw1"
+        And gpaddmirrors adds mirrors
+        Then verify the database has mirrors
+        And check segment conf: postgresql.conf
+        And the user runs "gpstop -aqM fast"
