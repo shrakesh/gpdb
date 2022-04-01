@@ -317,8 +317,7 @@ Feature: gpinitsystem tests
         Then gpstate should return a return code of 0
 
     Scenario: gpinitsystem should create consistent port entry on segments postgresql.conf file
-        Given the database is not running
-        When a demo cluster is created using gpinitsystem args " "
+        Given a standard local demo cluster is created
         And gpinitsystem should return a return code of 0
         Then gpstate should return a return code of 0
         And check segment conf: postgresql.conf
