@@ -32,6 +32,7 @@ Feature: Tests for gpmovemirrors
         And all the segments are running
         And the segments are synchronized
         And verify that mirrors are recognized after a restart
+        And check segment conf: postgresql.conf
 
     Scenario: gpmovemirrors can change the port of mirrors within a single host
         Given a standard local demo cluster is created
@@ -189,6 +190,7 @@ Feature: Tests for gpmovemirrors
         And gprecoverseg should return a return code of 0
         And all the segments are running
         And the segments are synchronized
+        And check segment conf: postgresql.conf
         And user can start transactions
 
 
@@ -278,6 +280,7 @@ Feature: Tests for gpmovemirrors
         Then gprecoverseg should return a return code of 0
         And all the segments are running
         And the segments are synchronized
+        And check segment conf: postgresql.conf
 
     @concourse_cluster
     Scenario: gpmovemirrors can change from spread mirroring to group mirroring
@@ -314,6 +317,8 @@ Feature: Tests for gpmovemirrors
         Then gprecoverseg should return a return code of 0
         And all the segments are running
         And the segments are synchronized
+        And check segment conf: postgresql.conf
+
 
     @concourse_cluster
     Scenario: tablespaces work on a multi-host environment
@@ -369,6 +374,7 @@ Feature: Tests for gpmovemirrors
 
         And the mode of all the created data directories is changed to 0700
         And the cluster is recovered in full and rebalanced
+        And check segment conf: postgresql.conf
         And the row count from table "test_movemirrors" in "postgres" is verified against the saved data
 
     @concourse_cluster
@@ -403,6 +409,7 @@ Feature: Tests for gpmovemirrors
 
         And the mode of all the created data directories is changed to 0700
         And the cluster is recovered in full and rebalanced
+        And check segment conf: postgresql.conf
         And the row count from table "test_movemirrors" in "postgres" is verified against the saved data
 
     @concourse_cluster
@@ -436,6 +443,7 @@ Feature: Tests for gpmovemirrors
 
         And the mode of all the created data directories is changed to 0700
         And the cluster is recovered in full and rebalanced
+        And check segment conf: postgresql.conf
         And the row count from table "test_movemirrors" in "postgres" is verified against the saved data
 
     @concourse_cluster
@@ -471,4 +479,5 @@ Feature: Tests for gpmovemirrors
 
         And the mode of all the created data directories is changed to 0700
         And the cluster is recovered in full and rebalanced
+        And check segment conf: postgresql.conf
         And the row count from table "test_movemirrors" in "postgres" is verified against the saved data

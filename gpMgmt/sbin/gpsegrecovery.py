@@ -46,7 +46,7 @@ class FullRecovery(Command):
         self.error_type = RecoveryErrorType.DEFAULT_ERROR
         self.logger.info("Updating %s/postgresql.conf" % self.recovery_info.target_datadir)
         modifyConfCmd = ModifyConfSetting('Updating %s/postgresql.conf' % self.recovery_info.target_datadir,
-                                          self.recovery_info.target_datadir + '/postgresql.conf',
+                                          "{}/{}".format(self.recovery_info.target_datadir, 'postgresql.conf'),
                                           'port', self.recovery_info.target_port, optType='number')
         modifyConfCmd.run(validateAfter=True)
 
