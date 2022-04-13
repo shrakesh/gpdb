@@ -60,20 +60,17 @@ class FullRecovery(Command):
         self.error_type = RecoveryErrorType.DEFAULT_ERROR
         self.logger.info("Successfully ran pg_basebackup for dbid: {}".format(
             self.recovery_info.target_segment_dbid))
-        self.error_type = RecoveryErrorType.START_ERROR
-        start_segment(self.recovery_info, self.logger, self.era)
 
         # Updating port number on conf once the segment start after recovery
+        self.error_type = RecoveryErrorType.UPDATE_ERROR
         self.logger.info("Updating %s/postgresql.conf" % self.recovery_info.target_datadir)
         modifyConfCmd = ModifyConfSetting('Updating %s/postgresql.conf' % self.recovery_info.target_datadir,
-                                          self.recovery_info.target_datadir + '/postgresql.conf',
+                                          "{}/{}".format(self.recovery_info.target_datadir, 'postgresql.conf'),
                                           'port', self.recovery_info.target_port, optType='number')
-        try:
-            modifyConfCmd.run(validateAfter=True)
-        except:
-            self.set_results(modifyConfCmd.get_results())
-            raise
+        modifyConfCmd.run(validateAfter=True)
 
+        self.error_type = RecoveryErrorType.START_ERROR
+        start_segment(self.recovery_info, self.logger, self.era)
 
 class IncrementalRecovery(Command):
     def __init__(self, name, recovery_info, logger, era):
@@ -94,6 +91,14 @@ class IncrementalRecovery(Command):
                        self.recovery_info.source_port, self.recovery_info.progress_file)
         cmd.run(validateAfter=True)
         self.logger.info("Successfully ran pg_rewind for dbid: {}".format(self.recovery_info.target_segment_dbid))
+
+        # Updating port number on conf once the segment start after recovery
+        self.error_type = RecoveryErrorType.UPDATE_ERROR
+        self.logger.info("Updating %s/postgresql.conf" % self.recovery_info.target_datadir)
+        modifyConfCmd = ModifyConfSetting('Updating %s/postgresql.conf' % self.recovery_info.target_datadir,
+                                          "{}/{}".format(self.recovery_info.target_datadir, 'postgresql.conf'),
+                                          'port', self.recovery_info.target_port, optType='number')
+        modifyConfCmd.run(validateAfter=True)
 
         self.error_type = RecoveryErrorType.START_ERROR
         start_segment(self.recovery_info, self.logger, self.era)

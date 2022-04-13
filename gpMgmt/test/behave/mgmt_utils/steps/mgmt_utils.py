@@ -3254,6 +3254,7 @@ def impl(context, config_file):
     run_gpcommand(context, 'gpinitsystem -a -c ../gpAux/gpdemo/clusterConfigFile -O %s' % config_file)
     check_return_code(context, 0)
 
+@given('check segment conf: postgresql.conf')
 @when('check segment conf: postgresql.conf')
 @then('check segment conf: postgresql.conf')
 def step_impl(context):
