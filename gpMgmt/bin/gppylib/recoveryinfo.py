@@ -112,11 +112,11 @@ class RecoveryResult(object):
         self._logger = logger
         self._invalid_recovery_errors = defaultdict(list)
         self._setup_recovery_errors = defaultdict(list)
+        self._setup_update_errors = defaultdict(list)
         self._bb_errors = defaultdict(list)
         self._rewind_errors = defaultdict(list)
         self._dbids_that_failed_bb_rewind = set()
         self._start_errors = defaultdict(list)
-        self._update_errors = defaultdict(list)
         self._parse_results(results)
 
     def _parse_results(self, results):
@@ -141,9 +141,6 @@ class RecoveryResult(object):
                     self._start_errors[host_result.remoteHost].append(error)
                 elif error.error_type == RecoveryErrorType.VALIDATION_ERROR:
                     self._setup_recovery_errors[host_result.remoteHost].append(error)
-                elif error.error_type == RecoveryErrorType.UPDATE_ERROR:
-                    self._update_errors[host_result.remoteHost].append(error)
-
                 #FIXME what should we do for default errors ?
 
     def _print_invalid_errors(self):
@@ -172,6 +169,16 @@ class RecoveryResult(object):
             for hostname, errors in self._setup_recovery_errors.items():
                 for error in errors:
                     self._logger.error(setup_recovery_error_pattern.format(hostname, error.port, error.error_msg))
+        self._print_invalid_errors()
+
+    def print_setup_update_errors(self):
+        setup_update_error_pattern = " hostname: {}; port: {}; error: {}"
+        if len(self._setup_update_errors) > 0:
+            self._logger.info("----------------------------------------------------------")
+            self._logger.info("Failed to update port for the following segments")
+            for hostname, errors in self._setup_update_errors.items():
+                for error in errors:
+                    self._logger.warning(setup_update_error_pattern.format(hostname, error.port, error.error_msg))
         self._print_invalid_errors()
 
     def print_bb_rewind_update_and_start_errors(self):

@@ -60,8 +60,6 @@ class FullRecovery(Command):
         self.error_type = RecoveryErrorType.DEFAULT_ERROR
         self.logger.info("Successfully ran pg_basebackup for dbid: {}".format(
             self.recovery_info.target_segment_dbid))
-        self.error_type = RecoveryErrorType.START_ERROR
-        start_segment(self.recovery_info, self.logger, self.era)
 
         # Updating port number on conf once the segment start after recovery
         self.error_type = RecoveryErrorType.UPDATE_ERROR
@@ -73,6 +71,7 @@ class FullRecovery(Command):
 
         self.error_type = RecoveryErrorType.START_ERROR
         start_segment(self.recovery_info, self.logger, self.era)
+
 
 class IncrementalRecovery(Command):
     def __init__(self, name, recovery_info, logger, era):
