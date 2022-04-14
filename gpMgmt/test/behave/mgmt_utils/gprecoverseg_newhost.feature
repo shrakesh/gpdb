@@ -43,7 +43,6 @@ Feature: gprecoverseg tests involving migrating to a new host
     And segment hosts "sdw1" are disconnected from the cluster and from the spare segment hosts "sdw5"
     And the cluster configuration has no segments where "hostname='sdw1' and status='u'"
     And datadirs from "before" configuration for "sdw1" are created on "sdw5" with mode 755
-    And check segment conf: postgresql.conf
     When the user runs "gprecoverseg -a -p sdw5 --hba-hostnames"
     Then gprecoverseg should return a return code of 1
 #    And pg_hba file "/data/gpdata/mirror/gpseg0/pg_hba.conf" on host "sdw2" contains entries for "sdw5"
@@ -77,7 +76,6 @@ Feature: gprecoverseg tests involving migrating to a new host
     And the cluster configuration has no segments where "hostname='sdw1' and status='u'"
     And the cluster configuration is saved for "before_recoverseg"
     And datadirs from "before_recoverseg" configuration for "sdw1" are created on "sdw5" with mode 000
-    And check segment conf: postgresql.conf
     When the user runs "gprecoverseg -a -p sdw5 --hba-hostnames"
     Then gprecoverseg should return a return code of 1
 #    And pg_hba file "/data/gpdata/mirror/gpseg0/pg_hba.conf" on host "sdw2" contains entries for "sdw5"
