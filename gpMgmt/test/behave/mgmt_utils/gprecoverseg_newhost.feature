@@ -36,6 +36,7 @@ Feature: gprecoverseg tests involving migrating to a new host
     Given the database is running
     And all the segments are running
     And the segments are synchronized
+    And check segment conf: postgresql.conf
     And database "gptest" exists
     And the user runs gpconfig sets guc "wal_sender_timeout" with "15s"
     And the user runs "gpstop -air"
@@ -54,11 +55,11 @@ Feature: gprecoverseg tests involving migrating to a new host
     And datadirs from "before" configuration for "sdw1" are created on "sdw5" with mode 700
     And the user runs "gprecoverseg -aF"
     And gprecoverseg should return a return code of 0
+    And check segment conf: postgresql.conf
     And the cluster configuration is saved for "one_host_down"
     And the "before" and "one_host_down" cluster configuration matches with the expected for gprecoverseg newhost
     And the mirrors replicate and fail over and back correctly
     And the cluster is rebalanced
-    And check segment conf: postgresql.conf
     And the original cluster state is recreated for "one_host_down"
     And the cluster configuration is saved for "after_recreation"
     And the "before" and "after_recreation" cluster configuration matches with the expected for gprecoverseg newhost
@@ -68,6 +69,7 @@ Feature: gprecoverseg tests involving migrating to a new host
     Given the database is running
     And all the segments are running
     And the segments are synchronized
+    And check segment conf: postgresql.conf
     And database "gptest" exists
     And the user runs gpconfig sets guc "wal_sender_timeout" with "15s"
     And the user runs "gpstop -air"
@@ -89,11 +91,11 @@ Feature: gprecoverseg tests involving migrating to a new host
     And datadirs from "before_recoverseg" configuration for "sdw1" are created on "sdw5" with mode 700
     And the user runs "gprecoverseg -a -p sdw5 --hba-hostnames"
     And gprecoverseg should return a return code of 0
+    And check segment conf: postgresql.conf
     And the cluster configuration is saved for "one_host_down"
     And the "before" and "one_host_down" cluster configuration matches with the expected for gprecoverseg newhost
     And the mirrors replicate and fail over and back correctly
     And the cluster is rebalanced
-    And check segment conf: postgresql.conf
     And the original cluster state is recreated for "one_host_down"
     And the cluster configuration is saved for "after_recreation"
     And the "before" and "after_recreation" cluster configuration matches with the expected for gprecoverseg newhost
