@@ -60,7 +60,6 @@ Feature: gprecoverseg tests involving migrating to a new host
     And the "before" and "one_host_down" cluster configuration matches with the expected for gprecoverseg newhost
     And the mirrors replicate and fail over and back correctly
     And the cluster is rebalanced
-    And check segment conf: postgresql.conf
     And the original cluster state is recreated for "one_host_down"
     And the cluster configuration is saved for "after_recreation"
     And the "before" and "after_recreation" cluster configuration matches with the expected for gprecoverseg newhost
@@ -97,7 +96,6 @@ Feature: gprecoverseg tests involving migrating to a new host
     And the "before" and "one_host_down" cluster configuration matches with the expected for gprecoverseg newhost
     And the mirrors replicate and fail over and back correctly
     And the cluster is rebalanced
-    And check segment conf: postgresql.conf
     And the original cluster state is recreated for "one_host_down"
     And the cluster configuration is saved for "after_recreation"
     And the "before" and "after_recreation" cluster configuration matches with the expected for gprecoverseg newhost

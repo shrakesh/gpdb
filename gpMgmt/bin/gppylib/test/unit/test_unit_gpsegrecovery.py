@@ -103,6 +103,20 @@ class IncrementalRecoveryTestCase(GpTestCase):
         self._assert_cmd_failed('{"error_type": "start", "error_msg": "pg_ctl start failed", "dbid": 2, ' \
                                 '"datadir": "/data/mirror0", "port": 50000, "progress_file": "/tmp/test_progress_file"}')
 
+    def test_incremental_modify_conf_setting_exception(self):
+        self.mock_pgrewind_modifyconfsetting.side_effect = [Exception('modify conf port failed'), Mock()]
+        self.incremental_recovery_cmd.run()
+
+        self.assertEqual(1, self.mock_pgrewind_init.call_count)
+        self.assertEqual(1, self.mock_pgrewind_run.call_count)
+        self.mock_pgrewind_modifyconfsetting.assert_called_once_with('Updating %s/postgresql.conf' % self.seg_recovery_info.target_datadir,
+                                                                     "{}/{}".format(self.seg_recovery_info.target_datadir, 'postgresql.conf'),
+                                                                     'port', self.seg_recovery_info.target_port, optType='number')
+        self.assertEqual(1, self.mock_pgrewind_modifyconfsetting.call_count)
+        self._assert_cmd_failed('{"error_type": "update", "error_msg": "modify conf port failed", "dbid": 2, ' \
+                                '"datadir": "/data/mirror0", "port": 50000, "progress_file": "/tmp/test_progress_file"}')
+
+
 
 class FullRecoveryTestCase(GpTestCase):
     def setUp(self):
@@ -270,12 +284,11 @@ class FullRecoveryTestCase(GpTestCase):
 
         self.assertEqual(1, self.mock_pgbasebackup_init.call_count)
         self.assertEqual(1, self.mock_pgbasebackup_run.call_count)
-        self.assertEqual(1, gpsegrecovery.start_segment.call_count)
         self.mock_pgbasebackup_modifyconfsetting.assert_called_once_with('Updating %s/postgresql.conf' % self.seg_recovery_info.target_datadir,
                                                                           "{}/{}".format(self.seg_recovery_info.target_datadir, 'postgresql.conf'),
                                                                           'port', self.seg_recovery_info.target_port, optType='number')
         self.assertEqual(1, self.mock_pgbasebackup_modifyconfsetting.call_count)
-        self._assert_cmd_failed('{"error_type": "default", "error_msg": "modify conf port failed", "dbid": 2, ' \
+        self._assert_cmd_failed('{"error_type": "update", "error_msg": "modify conf port failed", "dbid": 2, ' \
                                 '"datadir": "/data/mirror0", "port": 50000, "progress_file": "/tmp/test_progress_file"}')
 
 class SegRecoveryTestCase(GpTestCase):
