@@ -175,7 +175,6 @@ class ConfExpSegCmd(Command):
                             raise
 
                     logger.info("Successfully ran pg_basebackup: %s" % cmd.cmdStr)
-
                     return
 
                 logger.info("Create or update data directories for new segment")
