@@ -22,6 +22,7 @@ from gppylib import gparray
 from gppylib.commands.base import *
 from .unix import *
 from gppylib import pgconf
+from gppylib.commands.pg import PgControlData
 from gppylib.utils import writeLinesToFile, createFromSingleHostFile
 
 
@@ -1372,23 +1373,24 @@ def start_standbycoordinator(host, datadir, port, era=None,
     # started, this means now postmaster is responsive to signals, which
     # allows shutdown etc.  If we exit earlier, there is a big chance
     # a shutdown message from other process is missed.
-    for i in range(60):
-        # Fetch it every time, as postmaster might not have been up yet for
-        # the first few cycles, which we have seen when trying wrapper
-        # shell script.
-        pid = getPostmasterPID(host, datadir)
-        cmd = Command("get pids",
-                      ("python3 -c "
-                       "'from gppylib.commands import unix; "
-                       "print(unix.getDescendentProcesses({0}))'".format(pid)),
-                      ctxt=REMOTE, remoteHost=host)
-        cmd.run()
+
+    for i in range(60): # configure this timeout.
+        #check if database startup has a recovering process
+        # this can be done by checking 'postmaster.pid' file for active standby
+        if not os.path.exists(datadir + '/postmaster.pid'):
+            continue
+
+        #check state of the control file
+        cmd = PgControlData(name='run pg_controldata', datadir=datadir)
+        cmd.run(validateAfter=True)
         logger.debug(str(cmd))
-        result = cmd.get_results()
-        logger.debug(result)
-        # We want more than postmaster and logger processes.
-        if result.rc == 0 and len(result.stdout.split(',')) > 2:
+        value = cmd.get_value('Database cluster state')
+        logger.debug(value)
+
+        # if db state in crash recovery or in archive recovery says that cluster is up
+        if value == 'in crash recovery' or value == 'in archive recovery':
             return True
+
         time.sleep(1)
 
     logger.warning("Could not start standby coordinator")
