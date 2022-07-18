@@ -1249,9 +1249,17 @@ class GpArray:
     def get_min_primary_port(self):
         """Returns the minimum primary segment db port"""
         min_primary_port = self.segmentPairs[0].primaryDB.port
+
         for segPair in self.segmentPairs:
-            if segPair.primaryDB.port < min_primary_port:
-                min_primary_port = segPair.primaryDB.port
+            mirror = segPair.mirrorDB
+            primary = segPair.primaryDB
+
+            if primary.preferred_role == primary.role:
+                if primary.port < min_primary_port:
+                    min_primary_port = primary.port
+            else:
+                if mirror.port < min_primary_port:
+                    min_primary_port = mirror.port
 
         return min_primary_port
 
@@ -1260,8 +1268,15 @@ class GpArray:
         """Returns the maximum primary segment db port"""
         max_primary_port = self.segmentPairs[0].primaryDB.port
         for segPair in self.segmentPairs:
-            if segPair.primaryDB.port > max_primary_port:
-                max_primary_port = segPair.primaryDB.port
+            mirror = segPair.mirrorDB
+            primary = segPair.primaryDB
+
+            if primary.preferred_role == primary.role:
+                if primary.port > max_primary_port:
+                    max_primary_port = primary.port
+            else:
+                if mirror.port > max_primary_port:
+                    max_primary_port = mirror.port
 
         return max_primary_port
 
@@ -1275,8 +1290,14 @@ class GpArray:
 
         for segPair in self.segmentPairs:
             mirror = segPair.mirrorDB
-            if mirror and mirror.port < min_mirror_port:
-                min_mirror_port = mirror.port
+            primary = segPair.primaryDB
+
+            if mirror and mirror.preferred_role == mirror.role:
+                if mirror.port < min_mirror_port:
+                    min_mirror_port = mirror.port
+            else:
+                if mirror and primary.port < min_mirror_port:
+                    min_mirror_port = primary.port
 
         return min_mirror_port
 
@@ -1289,9 +1310,14 @@ class GpArray:
         max_mirror_port = self.segmentPairs[0].mirrorDB.port
 
         for segPair in self.segmentPairs:
+            primary = segPair.primaryDB
             mirror = segPair.mirrorDB
-            if mirror and mirror.port > max_mirror_port:
-                max_mirror_port = mirror.port
+            if mirror and mirror.preferred_role == mirror.role:
+                if mirror.port > max_mirror_port:
+                    max_mirror_port = mirror.port
+            else:
+                if mirror and primary.port > max_mirror_port:
+                    max_mirror_port = primary.port
 
         return max_mirror_port
 
