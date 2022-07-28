@@ -19,13 +19,13 @@
 from gppylib.mainUtils import *
 
 from optparse import OptionGroup
-import glob, os, sys, signal, shutil, time
+import glob, os, sys, signal, shutil, time, datetime
 from contextlib import closing
 
 from gppylib import gparray, gplog, userinput, utils
 from gppylib.util import gp_utils
 from gppylib.commands import gp, pg, unix
-from gppylib.commands.base import Command, WorkerPool
+from gppylib.commands.base import Command, WorkerPool, REMOTE
 from gppylib.db import dbconn
 from gppylib.gpparseopts import OptParser, OptChecker
 from gppylib.operations.detect_unreachable_hosts import get_unreachable_segment_hosts, update_unreachable_flag_for_segments
@@ -67,6 +67,98 @@ class RemoteQueryCommand(Command):
                             utility=True)) as conn:
             self.res = dbconn.query(conn, self.query).fetchall()
 # -------------------------------------------------------------------------
+
+def get_network_speed(hostname):
+    cmd_str = "dd if=/dev/zero of=test bs=1024k count=200 2>/dev/null; rm -rf ~/test ; rsync -av test %s:test| tail -2|head -1" % hostname
+    cmd = Command(name='Get-Network-Speed', cmdStr=cmd_str, ctxt=REMOTE, remoteHost=hostname)
+    cmd.run(validateAfter=True)
+    str_output = cmd.get_results().stdout.strip()
+    size = str_output.split(" ")
+    val = size[8]
+    unit = size[9]
+    return val, unit
+    #  print(val + " " + unit)
+    # sent 58060 bytes  received 101430 bytes  106326.67 bytes/sec
+
+def get_disc_speed(hostname):
+    cmd_str = "fio --end_fsync=1 --bs=1M --size=20G --rw=write --filename=zeroes --direct=1 --name=direct_1M --eta-newline=1 | tail -1"
+    cmd = Command(name='Get-disc-Speed', cmdStr=cmd_str, ctxt=REMOTE, remoteHost=hostname)
+    cmd.run(validateAfter=True)
+    str_output = cmd.get_results().stdout.strip()
+    size = str_output.split(" ")[2][1:-2]
+    unit = size[-4:]
+    val = size[:-4]
+    return val, unit
+
+#  print(val + " " + unit)
+#   WRITE: bw=1664MiB/s (1745MB/s), 1664MiB/s-1664MiB/s (1745MB/s-1745MB/s), io=20.0GiB (21.5GB), run=12309-12309msec
+
+def get_datadir_size(hostname, datadir):
+    cmd_str = "du -sh %s" % datadir
+    cmd = Command(name='Get-data-directory-size', cmdStr=cmd_str, ctxt=REMOTE, remoteHost=hostname)
+    cmd.run(validateAfter=True)
+    str_output = cmd.get_results().stdout.strip()
+    size = str_output.split("\t")[0]  # this will give you size like 2.1M
+    unit = size[-1]  # M or B or G
+    val = size[:-1]  # val 2.1
+    return val, unit
+    #   2.1M	/tmp/
+
+def get_data_dir(hostname, port):
+    data_dir = None
+    try:
+        dburl = dbconn.DbURL()
+        conn = dbconn.connect(dburl, encoding='UTF8')
+        data_dir = dbconn.querySingleton(conn,
+                                         "select datadir from gp_segment_configuration where hostname = %s and  port = port;" % (
+                                         hostname, port))
+    finally:
+        conn.close()
+
+    return data_dir
+
+def convertUnit(data, src, tgt='B'):
+    val = float(data)
+
+    res = 1
+    if src == 'B' or src == 'b':
+        res = val / 1024
+    elif src == 'M' or src == 'm':
+        res = val * 1024
+    elif src == 'G' or src == 'g':
+        res = val * 1024 * 1024
+    else:
+        res = val
+
+    return res
+
+def calculate_and_display_prediction(hostname, datadir):
+    # get data speed divide by network speed - time in sec (data size/ n/w)
+    # get data speed divide by disc speed -  time in sec (
+    # add  both to get the total time in sec
+    # import pdb;
+    # pdb.set_trace()
+    network_speed, network_unit = get_network_speed(hostname)
+    print("network speed: %s and unit: %s " %(network_speed, network_unit))
+    disc_speed, disc_unit = get_disc_speed(hostname)
+    print("disc speed: %s and unit: %s " %(disc_speed, disc_unit))
+    net_per_sec = convertUnit(network_speed, network_unit[0])
+    disc_per_sec = convertUnit(disc_speed, disc_unit[0])
+    print("disc net_per_sec: %s and disc_per_sec: %s " % (net_per_sec, disc_per_sec))
+    dir_size, dir_unit = get_datadir_size(hostname, datadir)
+    print("dir size : %s and unit: %s " % (dir_size, dir_unit))
+    dsize = convertUnit(dir_size, dir_unit[0])
+    print("converted dir size:%s" % dsize)
+
+    # time in second:
+    time_over_network = int(dsize / net_per_sec)
+    time_on_disc = int(dsize / disc_per_sec)
+
+    expected_time = time_over_network + time_on_disc
+
+    print("expected time in minutes %s " % (expected_time/60))
+
+    print("expected time for completion: %s " % datetime.timedelta(expected_time))
 
 class GpRecoverSegmentProgram:
     #
@@ -198,6 +290,13 @@ class GpRecoverSegmentProgram:
                 tabLog.outputTable()
 
                 i = i + 1
+
+                datadir = toRecover.getLiveSegment().getSegmentDataDirectory()  # get_data_dir(self.recovery_info.source_hostname,self.recovery_info.source_port)
+                if datadir is None:
+                    self.logger.info("not able to get source data dir")
+
+                calculate_and_display_prediction(toRecover.getLiveSegment().getSegmentHostName(), datadir)
+
 
         self.logger.info('---------------------------------------------------------')
 
@@ -474,3 +573,4 @@ class GpRecoverSegmentProgram:
         gprecoverseg at the same time.
         """
         return {'pidlockpath': 'gprecoverseg.lock', 'parentpidvar': 'GPRECOVERPID'}
+
