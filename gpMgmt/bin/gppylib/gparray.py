@@ -1246,9 +1246,33 @@ class GpArray:
         return len(self.segmentPairs)
 
     # --------------------------------------------------------------------
+    def get_primary_base_port(self):
+        primary = self.segmentPairs[0].primaryDB
+        base_port = primary.port
+
+        if primary.preferred_role != primary.role:
+            base_port = self.segmentPairs[0].mirrorDB.port
+
+        return base_port
+
+    # --------------------------------------------------------------------
+    def get_mirror_base_port(self):
+
+        if self.get_mirroring_enabled() is False:
+            raise Exception('Mirroring is not enabled')
+
+        mirror = self.segmentPairs[0].mirrorDB
+        base_port = mirror.port
+
+        if mirror.preferred_role != mirror.role:
+            base_port = self.segmentPairs[0].primaryDB.port
+
+        return base_port
+
+    # --------------------------------------------------------------------
     def get_min_primary_port(self):
         """Returns the minimum primary segment db port"""
-        min_primary_port = self.segmentPairs[0].primaryDB.port
+        min_primary_port = self.get_primary_base_port()
 
         for segPair in self.segmentPairs:
             mirror = segPair.mirrorDB
@@ -1266,7 +1290,7 @@ class GpArray:
     # --------------------------------------------------------------------
     def get_max_primary_port(self):
         """Returns the maximum primary segment db port"""
-        max_primary_port = self.segmentPairs[0].primaryDB.port
+        max_primary_port = self.get_primary_base_port()
         for segPair in self.segmentPairs:
             mirror = segPair.mirrorDB
             primary = segPair.primaryDB
@@ -1286,7 +1310,7 @@ class GpArray:
         if self.get_mirroring_enabled() is False:
             raise Exception('Mirroring is not enabled')
 
-        min_mirror_port = self.segmentPairs[0].mirrorDB.port
+        min_mirror_port = self.get_mirror_base_port()
 
         for segPair in self.segmentPairs:
             mirror = segPair.mirrorDB
@@ -1307,7 +1331,7 @@ class GpArray:
         if self.get_mirroring_enabled() is False:
             raise Exception('Mirroring is not enabled')
 
-        max_mirror_port = self.segmentPairs[0].mirrorDB.port
+        max_mirror_port = self.get_mirror_base_port()
 
         for segPair in self.segmentPairs:
             primary = segPair.primaryDB

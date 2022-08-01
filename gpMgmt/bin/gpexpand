@@ -260,16 +260,13 @@ def gpexpand_status_file_exists(coordinator_data_directory):
 
 
 def is_cluster_up_and_balanced(dburl):
-    count = None
+    count = -1
+    sql = "select count(*) from gp_segment_configuration where status <> 'u' or preferred_role <> role;"
     try:
-        conn = dbconn.connect(dburl, encoding='UTF8')
-        count = dbconn.querySingleton(conn,
-                                      "select count(*) from gp_segment_configuration where status <> 'u' or preferred_role <> role;")
-    except Exception:
-        raise
-
-    finally:
-        if conn: conn.close()
+        with closing(dbconn.connect(dburl, encoding='UTF8')) as conn:
+            count = dbconn.querySingleton(conn, sql)
+    except Exception as e:
+        raise Exception("failed to query cluster role check: %s" % str(e))
 
     return count == 0
 

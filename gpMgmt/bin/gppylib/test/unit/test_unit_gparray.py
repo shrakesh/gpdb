@@ -283,6 +283,30 @@ class GpArrayTestCase(GpTestCase):
         actual = GpArray.get_max_mirror_port(self.gpArray)
         self.assertEqual(expected, actual)
 
+    def test_get_primary_base_port(self):
+        self.gpArray = self._createUnBalancedGpArrayWith1Primary1Mirrors()
+        expected = 6000
+        actual = GpArray.get_primary_base_port(self.gpArray)
+        self.assertEqual(expected, actual)
+
+    def test_get_mirror_base_port(self):
+        self.gpArray = self._createUnBalancedGpArrayWith1Primary1Mirrors()
+        expected = 7000
+        actual = GpArray.get_mirror_base_port(self.gpArray)
+        self.assertEqual(expected, actual)
+
+    def _createUnBalancedGpArrayWith1Primary1Mirrors(self):
+        self.coordinator = Segment.initFromString(
+            "1|-1|p|p|s|u|cdw|cdw|6432|/data/coordinator")
+        self.standby = Segment.initFromString(
+            "6|-1|m|m|s|u|sdw3|sdw3|6432|/data/standby")
+        self.primary0 = Segment.initFromString(
+            "2|0|m|p|s|u|sdw1|sdw1|6000|/data/primary0")
+        self.mirror0 = Segment.initFromString(
+            "4|0|p|m|s|u|sdw2|sdw2|7000|/data/mirror0")
+
+        return GpArray([self.coordinator, self.primary0, self.mirror0])
+
     def _createBalancedGpArrayWith2Primary2Mirrors(self):
         self.coordinator = Segment.initFromString(
             "1|-1|p|p|s|u|cdw|cdw|6432|/data/coordinator")
