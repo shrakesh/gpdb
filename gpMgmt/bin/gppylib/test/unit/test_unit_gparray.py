@@ -283,29 +283,48 @@ class GpArrayTestCase(GpTestCase):
         actual = GpArray.get_max_mirror_port(self.gpArray)
         self.assertEqual(expected, actual)
 
-    def test_get_primary_base_port(self):
-        self.gpArray = self._createUnBalancedGpArrayWith1Primary1Mirrors()
-        expected = 6000
-        actual = GpArray.get_primary_base_port(self.gpArray)
+    def test_get_primary_port_list_when_cluster_balanced(self):
+        self.gpArray = self._createBalancedGpArrayWith2Primary2Mirrors()
+        expected = [6000, 6001]
+        actual = GpArray.get_primary_port_list(self.gpArray)
         self.assertEqual(expected, actual)
 
-    def test_get_mirror_base_port(self):
-        self.gpArray = self._createUnBalancedGpArrayWith1Primary1Mirrors()
-        expected = 7000
-        actual = GpArray.get_mirror_base_port(self.gpArray)
+    def test_get_primary_port_list_when_cluster_not_balanced(self):
+        self.gpArray = self._createUnBalancedGpArrayWith2Primary2Mirrors()
+        expected = [6000, 6001]
+        actual = GpArray.get_primary_port_list(self.gpArray)
         self.assertEqual(expected, actual)
 
-    def _createUnBalancedGpArrayWith1Primary1Mirrors(self):
-        self.coordinator = Segment.initFromString(
-            "1|-1|p|p|s|u|cdw|cdw|6432|/data/coordinator")
-        self.standby = Segment.initFromString(
-            "6|-1|m|m|s|u|sdw3|sdw3|6432|/data/standby")
-        self.primary0 = Segment.initFromString(
-            "2|0|m|p|s|u|sdw1|sdw1|6000|/data/primary0")
-        self.mirror0 = Segment.initFromString(
-            "4|0|p|m|s|u|sdw2|sdw2|7000|/data/mirror0")
+    def test_get_primary_port_list_len_exception(self):
+        self.gpArray = self._createBalancedGpArrayWith2Primary2Mirrors()
+        self.gpArray.segmentPairs = []
+        with self.assertRaisesRegex(Exception, 'No primary ports found in array.'):
+            GpArray.get_primary_port_list(self.gpArray)
 
-        return GpArray([self.coordinator, self.primary0, self.mirror0])
+    def test_get_mirror_port_list_when_cluster_balanced(self):
+        self.gpArray = self._createBalancedGpArrayWith2Primary2Mirrors()
+        expected = [7000, 7001]
+        actual = GpArray.get_mirror_port_list(self.gpArray)
+        self.assertEqual(expected, actual)
+
+    def test_get_mirror_port_list_when_cluster_not_balanced(self):
+        self.gpArray = self._createUnBalancedGpArrayWith2Primary2Mirrors()
+        expected = [7000, 7001]
+        actual = GpArray.get_mirror_port_list(self.gpArray)
+        self.assertEqual(expected, actual)
+
+    @patch('gppylib.gparray.GpArray.get_mirroring_enabled', return_value=False)
+    def test_get_mirror_port_list_no_mirror_exception(self,mock1):
+        self.gpArray = self._createBalancedGpArrayWith2Primary2Mirrors()
+        with self.assertRaisesRegex(Exception, 'Mirroring is not enabled'):
+            GpArray.get_mirror_port_list(self.gpArray)
+
+    @patch('gppylib.gparray.GpArray.get_mirroring_enabled', return_value=True)
+    def test_get_mirror_port_list_len_exception(self, mock1):
+        self.gpArray = self._createBalancedGpArrayWith2Primary2Mirrors()
+        self.gpArray.segmentPairs = []
+        with self.assertRaisesRegex(Exception, 'No mirror ports found in array.'):
+            GpArray.get_mirror_port_list(self.gpArray)
 
     def _createBalancedGpArrayWith2Primary2Mirrors(self):
         self.coordinator = Segment.initFromString(
@@ -320,22 +339,22 @@ class GpArrayTestCase(GpTestCase):
             "5|1|m|m|s|u|sdw1|sdw1|7001|/data/mirror1")
         self.standby = Segment.initFromString(
             "6|-1|m|m|s|u|sdw3|sdw3|6432|/data/standby")
-        return GpArray([self.coordinator, self.primary0, self.primary1, self.mirror0, self.mirror1])
+        return GpArray([self.coordinator, self.standby, self.primary0, self.primary1, self.mirror0, self.mirror1])
 
     def _createUnBalancedGpArrayWith2Primary2Mirrors(self):
         self.coordinator = Segment.initFromString(
             "1|-1|p|p|s|u|cdw|cdw|6432|/data/coordinator")
         self.primary0 = Segment.initFromString(
-            "2|0|p|p|s|u|sdw1|sdw1|6000|/data/primary0")
+            "2|0|m|p|s|u|sdw1|sdw1|6000|/data/primary0")
         self.primary1 = Segment.initFromString(
             "3|1|m|p|s|u|sdw2|sdw2|6001|/data/primary1")
         self.mirror0 = Segment.initFromString(
-            "4|0|m|m|s|u|sdw2|sdw2|7000|/data/mirror0")
+            "4|0|p|m|s|u|sdw2|sdw2|7000|/data/mirror0")
         self.mirror1 = Segment.initFromString(
             "5|1|p|m|s|u|sdw1|sdw1|7001|/data/mirror1")
         self.standby = Segment.initFromString(
             "6|-1|m|m|s|u|sdw3|sdw3|6432|/data/standby")
-        return GpArray([self.coordinator, self.primary0, self.primary1, self.mirror0, self.mirror1])
+        return GpArray([self.coordinator, self.standby, self.primary0, self.primary1, self.mirror0, self.mirror1])
 
 def convert_bool(val):
     if type(val) is bool:
