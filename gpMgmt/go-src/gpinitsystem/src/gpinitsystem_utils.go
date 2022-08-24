@@ -1,17 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
+	"github.com/BurntSushi/toml"
 	"log"
 	"os"
 	"os/exec"
 	"os/user"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"github.com/pelletier/go-toml"
 )
 
 var gpArray struct{
@@ -150,78 +148,99 @@ func getQDArrayFormat(QE string) (string,error){
 //}
 
 // checkParam
-func checkParam()(error){
-	log.Printf("[INFO]:-Checking configuration parameters, please wait...")
-	user, err := user.Current()
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	username := user.Username
-
-	if os.Geteuid() == 0{
-		error := fmt.Sprintf("[FATAL]:-Unable to run this script as root user: %s.",username )
-		return errors.New(error)
-	}
-
-	if _,ok := os.LookupEnv("GPHOME"); !ok{
-		log.Fatalf("[FATAL]:-Environment variable GPHOME not set")
-		log.Fatalf("[FATAL]:-Unable to continue")
-		return errors.New("")
-	}
-
-	if _, err = exec.LookPath("initdb"); err != nil{
-		log.Fatalf("[FATAL]:-Unable to locate initdb")
-		return errors.New("")
-	}
-
-	// check either cluster config or input config is supplied
-	// To-Do
-
-	clusterConfigFile := "clusterConfigFile"
-	if clusterConfigFile != "" {
-
-		// check if error is "file not exists"
-		if _ , err := os.Stat(clusterConfigFile); os.IsNotExist(err) {
-			log.Fatalf("[FATAL]:-Configuration file %s does not exist.",clusterConfigFile)
-			return errors.New("")
-		}
-
-		os.Unsetenv("PORT_BASE")
-		os.Unsetenv("SEG_PREFIX")
-		os.Unsetenv("DATA_DIRECTORY")
-		os.Unsetenv("HEAP_CHECKSUM")
-		os.Unsetenv("HBA_HOSTNAMES")
-
-		// cleaning up of ctrl M char will be taken care by file reader
-		file, err := os.Open(clusterConfigFile)
-		 if err != nil{
-			log.Fatalf("[FATAL]:- unable to read the file")
-			return errors.New("")
-		}
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			line := strings.Trim(scanner.Text(),"\n")
-			if len(line) > 0 && strings.Contains(line,"Metadata will be written to") {
-				path := strings.Split(line, "Metadata will be written to ")
-				dir := filepath.Dir(path[1])
-			}
-		}
-
-		//check if there is no error reported while reading file.
-		if err := scanner.Err(); err != nil {
-			return errors.New("ReadAndGetGpBackupPath() failed: " + err.Error())
-		}
-
-
-		//Dumping cluster config file to log file for reference
-
-
-	} else{
-
-	}
-
-
-}
+//func checkParam()(error){
+//	log.Printf("[INFO]:-Checking configuration parameters, please wait...")
+//	user, err := user.Current()
+//	if err != nil {
+//		log.Fatalf(err.Error())
+//	}
+//
+//	username := user.Username
+//
+//	if os.Geteuid() == 0{
+//		error := fmt.Sprintf("[FATAL]:-Unable to run this script as root user: %s.",username )
+//		return errors.New(error)
+//	}
+//
+//	if _,ok := os.LookupEnv("GPHOME"); !ok{
+//		log.Fatalf("[FATAL]:-Environment variable GPHOME not set")
+//		log.Fatalf("[FATAL]:-Unable to continue")
+//		return errors.New("")
+//	}
+//
+//	if _, err = exec.LookPath("initdb"); err != nil{
+//		log.Fatalf("[FATAL]:-Unable to locate initdb")
+//		return errors.New("")
+//	}
+//
+//	// check either cluster config or input config is supplied
+//	// To-Do
+//
+//	clusterConfigFile := "clusterConfigFile"
+//	if clusterConfigFile != "" {
+//
+//		// check if error is "file not exists"
+//		if _ , err := os.Stat(clusterConfigFile); os.IsNotExist(err) {
+//			log.Fatalf("[FATAL]:-Configuration file %s does not exist.",clusterConfigFile)
+//			return errors.New("")
+//		}
+//
+//		os.Unsetenv("PORT_BASE")
+//		os.Unsetenv("SEG_PREFIX")
+//		os.Unsetenv("DATA_DIRECTORY")
+//		os.Unsetenv("HEAP_CHECKSUM")
+//		os.Unsetenv("HBA_HOSTNAMES")
+//
+//		config, err := toml.DecodeFile("config.toml")
+//
+//		if err != nil {
+//			fmt.Println("Error ", err.Error())
+//		} else {
+//			// retrieve data directly
+//			directUser := config.Get("postgres.user").(string)
+//			directPassword := config.Get("postgres.password").(string)
+//			fmt.Println("User is", directUser, " and password is", directPassword)
+//
+//			// or using an intermediate object
+//			configTree := config.Get("postgres").(*toml.Tree)
+//			user := configTree.Get("user").(string)
+//			password := configTree.Get("password").(string)
+//			fmt.Println("User is", user, " and password is", password)
+//
+//			// show where elements are in the file
+//			fmt.Printf("User position: %v\n", configTree.GetPosition("user"))
+//			fmt.Printf("Password position: %v\n", configTree.GetPosition("password"))
+//		}
+//
+//		//// cleaning up of ctrl M char will be taken care by file reader
+//		//file, err := os.Open(clusterConfigFile)
+//		// if err != nil{
+//		//	log.Fatalf("[FATAL]:- unable to read the file")
+//		//	return errors.New("")
+//		//}
+//		//defer file.Close()
+//		//
+//		//scanner := bufio.NewScanner(file)
+//		//for scanner.Scan() {
+//		//	line := strings.Trim(scanner.Text(),"\n")
+//		//	if len(line) > 0 && strings.Contains(line,"Metadata will be written to") {
+//		//		path := strings.Split(line, "Metadata will be written to ")
+//		//		dir := filepath.Dir(path[1])
+//		//	}
+//		//}
+//
+//		////check if there is no error reported while reading file.
+//		//if err := scanner.Err(); err != nil {
+//		//	return errors.New("ReadAndGetGpBackupPath() failed: " + err.Error())
+//		//}
+//
+//
+//		//Dumping cluster config file to log file for reference
+//
+//
+//	} else{
+//
+//	}
+//
+//
+//}
