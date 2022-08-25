@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"log"
 	"os"
 	"os/exec"
@@ -33,10 +32,10 @@ func findCmdInPath(cmd string){
 }
 
 // findMppPath
-func findMppPath() error{
-	// to do
-	// function to get the path of mpp function(gpstart/ gpstop)
-}
+//func findMppPath() error{
+//	// to do
+//	// function to get the path of mpp function(gpstart/ gpstop)
+//}
 
 // IN_ARRAY this function from bash is not much of use
 // we will be having log level set and based on that message can be writtern so function LOG_MSG is not required
@@ -84,6 +83,49 @@ func  isValidGpArray()(bool){
 	}
 
 	return true
+}
+
+// getCurrentUserName get current user name
+func getCurrentUserName() string {
+
+	user, err := user.Current()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	return user.Username
+}
+
+
+// AssignCoordinatorVars
+func AssignCoordinatorVars() error {
+	// Use COORDINATOR_* variables by default, fall back to MASTER_* variables if necessary
+	if _,ok := os.LookupEnv("COORDINATOR_HOSTNAME"); !ok{
+		if host, ok := os.LookupEnv("MASTER_HOSTNAME"); ok{
+			os.Setenv("COORDINATOR_HOSTNAME",host)
+		}else{
+			log.Fatalf("[FATAL]:-COORDINATOR_HOSTNAME variable not set")
+			return errors.New("")
+		}
+	}
+
+	if _,ok := os.LookupEnv("COORDINATOR_PORT"); !ok{
+		if host, ok := os.LookupEnv("MASTER_PORT"); ok{
+			os.Setenv("COORDINATOR_PORT",host)
+		}else{
+			log.Fatalf("[FATAL]:-COORDINATOR_PORT variable not set")
+			return errors.New("")
+		}
+	}
+
+	if _,ok := os.LookupEnv("COORDINATOR_DIRECTORY"); !ok{
+		if host, ok := os.LookupEnv("MASTER_DIRECTORY"); ok{
+			os.Setenv("COORDINATOR_DIRECTORY",host)
+		}else{
+			log.Fatalf("[FATAL]:-COORDINATOR_DIRECTORY variable not set")
+			return errors.New("")
+		}
+	}
+	return nil
 }
 
 
@@ -148,99 +190,76 @@ func getQDArrayFormat(QE string) (string,error){
 //}
 
 // checkParam
-//func checkParam()(error){
-//	log.Printf("[INFO]:-Checking configuration parameters, please wait...")
-//	user, err := user.Current()
-//	if err != nil {
-//		log.Fatalf(err.Error())
-//	}
-//
-//	username := user.Username
-//
-//	if os.Geteuid() == 0{
-//		error := fmt.Sprintf("[FATAL]:-Unable to run this script as root user: %s.",username )
-//		return errors.New(error)
-//	}
-//
-//	if _,ok := os.LookupEnv("GPHOME"); !ok{
-//		log.Fatalf("[FATAL]:-Environment variable GPHOME not set")
-//		log.Fatalf("[FATAL]:-Unable to continue")
-//		return errors.New("")
-//	}
-//
-//	if _, err = exec.LookPath("initdb"); err != nil{
-//		log.Fatalf("[FATAL]:-Unable to locate initdb")
-//		return errors.New("")
-//	}
-//
-//	// check either cluster config or input config is supplied
-//	// To-Do
-//
-//	clusterConfigFile := "clusterConfigFile"
-//	if clusterConfigFile != "" {
-//
-//		// check if error is "file not exists"
-//		if _ , err := os.Stat(clusterConfigFile); os.IsNotExist(err) {
-//			log.Fatalf("[FATAL]:-Configuration file %s does not exist.",clusterConfigFile)
-//			return errors.New("")
-//		}
-//
-//		os.Unsetenv("PORT_BASE")
-//		os.Unsetenv("SEG_PREFIX")
-//		os.Unsetenv("DATA_DIRECTORY")
-//		os.Unsetenv("HEAP_CHECKSUM")
-//		os.Unsetenv("HBA_HOSTNAMES")
-//
-//		config, err := toml.DecodeFile("config.toml")
-//
-//		if err != nil {
-//			fmt.Println("Error ", err.Error())
-//		} else {
-//			// retrieve data directly
-//			directUser := config.Get("postgres.user").(string)
-//			directPassword := config.Get("postgres.password").(string)
-//			fmt.Println("User is", directUser, " and password is", directPassword)
-//
-//			// or using an intermediate object
-//			configTree := config.Get("postgres").(*toml.Tree)
-//			user := configTree.Get("user").(string)
-//			password := configTree.Get("password").(string)
-//			fmt.Println("User is", user, " and password is", password)
-//
-//			// show where elements are in the file
-//			fmt.Printf("User position: %v\n", configTree.GetPosition("user"))
-//			fmt.Printf("Password position: %v\n", configTree.GetPosition("password"))
-//		}
-//
-//		//// cleaning up of ctrl M char will be taken care by file reader
-//		//file, err := os.Open(clusterConfigFile)
-//		// if err != nil{
-//		//	log.Fatalf("[FATAL]:- unable to read the file")
-//		//	return errors.New("")
-//		//}
-//		//defer file.Close()
-//		//
-//		//scanner := bufio.NewScanner(file)
-//		//for scanner.Scan() {
-//		//	line := strings.Trim(scanner.Text(),"\n")
-//		//	if len(line) > 0 && strings.Contains(line,"Metadata will be written to") {
-//		//		path := strings.Split(line, "Metadata will be written to ")
-//		//		dir := filepath.Dir(path[1])
-//		//	}
-//		//}
-//
-//		////check if there is no error reported while reading file.
-//		//if err := scanner.Err(); err != nil {
-//		//	return errors.New("ReadAndGetGpBackupPath() failed: " + err.Error())
-//		//}
-//
-//
-//		//Dumping cluster config file to log file for reference
-//
-//
-//	} else{
-//
-//	}
-//
-//
-//}
+func checkParam()(error){
+	log.Printf("[INFO]:-Checking configuration parameters, please wait...")
+	user, err := user.Current()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	username := user.Username
+
+	if os.Geteuid() == 0{
+		error := fmt.Sprintf("[FATAL]:-Unable to run this script as root user: %s.",username )
+		return errors.New(error)
+	}
+
+	if _,ok := os.LookupEnv("GPHOME"); !ok{
+		log.Fatalf("[FATAL]:-Environment variable GPHOME not set")
+		log.Fatalf("[FATAL]:-Unable to continue")
+		return errors.New("")
+	}
+
+	if _, err = exec.LookPath("initdb"); err != nil{
+		log.Fatalf("[FATAL]:-Unable to locate initdb")
+		return errors.New("")
+	}
+
+	// check either cluster config or input config is supplied
+	// To-Do
+
+	clusterConfigFile := "clusterConfigFile"
+	if clusterConfigFile != "" {
+
+		ClusterConfigData, err :=  ReadClusterConfigFile( clusterConfigFile)
+		if err != nil{
+			return err
+		}
+
+		if err := AssignCoordinatorVars(); err != nil{
+			return err
+		}
+
+		// check if $QD_PRIMARY_ARRAY is supplied with -c option
+		// need to have discussion if we are not supplying do we really need to have this check
+
+		if len(ClusterConfigData.Primary.PortBase) == 0{
+			log.Fatalf("[FATAL]:-PORT_BASE not specified in %s file, is this the correct instance configuration file.",clusterConfigFile)
+		}
+
+		if len(ClusterConfigData.Mirror.PortBase) > 0 {
+			// setMirroring
+		}
+
+		// imo unsetting variable is not required
+		//os.Unsetenv("PORT_BASE")
+		//os.Unsetenv("SEG_PREFIX")
+		//os.Unsetenv("DATA_DIRECTORY")
+		//os.Unsetenv("HEAP_CHECKSUM")
+		//os.Unsetenv("HBA_HOSTNAMES")
+
+		//Dumping cluster config file to log file for reference
+	} else{
+		inputConfigFile := "inputConfigFile"
+		log.Printf("[INFO]:-Reading Greenplum input configuration file %s", inputConfigFile)
+
+		InputConfigData, err :=  ReadInputConfigFile( inputConfigFile)
+		if err != nil{
+			return err
+		}
+
+
+	}
+
+
+}

@@ -126,6 +126,9 @@ func printUsage() {
 	      1 - Fatal error, instance not created/started, or in an inconsistent state,
 	          see log file for failure reason.
     `
+
+	ReadClusterConfigFile("/Users/shrakesh/workspace/gpdb/gpAux/gpdemo/clusterConfigFile")
+
 	if _, err := os.Stat(GLOBAL_CONF.HELP_DOC_NAME); err != nil {
 		// error stating the help file, print standard help message
 		fmt.Println("[WARNING]:- Error opening help file %v", GLOBAL_CONF.HELP_DOC_NAME)
