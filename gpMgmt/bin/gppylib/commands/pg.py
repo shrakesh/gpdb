@@ -8,6 +8,8 @@ import pipes
 
 from gppylib.gplog import *
 from gppylib.gparray import *
+from gppylib.db import dbconn
+from contextlib import closing
 from .base import *
 from .unix import *
 from gppylib.commands.base import *
@@ -153,6 +155,18 @@ def killPgProc(db,procname,signal):
     cmd=Kill.remote("kill "+procname,procPID,signal,hostname)
     return (parentPID,procPID)
 
+def is_replication_slot_exist(source_host, source_port, replication_slot_name):
+    count = -1
+    sql = "select count(*) from pg_replication_slot where slot_name = '%s';" % replication_slot_name
+    try:
+        dburl = dbconn.DbURL(hostname=source_host, port=source_port, dbname=os.environ.get('PGDATABASE', 'template1'))
+        with closing(dbconn.connect(dburl, utility=True, encoding='UTF8')) as conn:
+            count = dbconn.querySingleton(conn, sql)
+    except Exception as e:
+        raise Exception("failed to query replication slot: %s" % str(e))
+
+    return count == 1
+
 class PgControlData(Command):
     def __init__(self, name, datadir, ctxt=LOCAL, remoteHost=None):
         self.datadir = datadir
@@ -217,7 +231,7 @@ class PgBaseBackup(Command):
         cmd_tokens.append('-p')
         cmd_tokens.append(source_port)
 
-        if create_slot:
+        if create_slot and not is_replication_slot_exist(source_host, source_port, replication_slot_name):
             cmd_tokens.append('--create-slot')
 
         cmd_tokens.extend(self._xlog_arguments(replication_slot_name))
