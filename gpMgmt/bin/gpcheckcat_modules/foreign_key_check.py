@@ -55,8 +55,8 @@ class ForeignKeyCheck:
         # pg_class.relnatts to the join.  But that's not possible
         # without significantly changing the existing query generation
         # logic.
-        if catname == 'pg_rewrite':
-            return
+        # if catname == 'pg_rewrite':
+        #     return
 
         # skip shared/non-shared tables
         if self.shared_option:
