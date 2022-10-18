@@ -261,6 +261,10 @@ class GpRecoverSegmentProgram:
         if optionCnt > 1:
             raise ProgramArgumentValidationException("Only one of -i, -p, and -r may be specified")
 
+        # verify "mode to recover" options
+        if self.__options.forceFullResynchronization and self.__options.diffResynchronization:
+            raise ProgramArgumentValidationException("Only one of -f and --differential may be specified")
+
         faultProberInterface.getFaultProber().initializeProber(gpEnv.getCoordinatorPort())
 
         confProvider = configInterface.getConfigurationProvider().initializeProvider(gpEnv.getCoordinatorPort())
@@ -440,6 +444,10 @@ class GpRecoverSegmentProgram:
                          dest="forceFullResynchronization",
                          metavar="<forceFullResynchronization>",
                          help="Force full segment resynchronization")
+        addTo.add_option('--differential', None, default=False, action='store_true',
+                         dest="diffResynchronization",
+                         metavar="<diffResynchronization>",
+                         help="differential segment resynchronization")
         addTo.add_option("-B", None, type="int", default=gp.DEFAULT_COORDINATOR_NUM_WORKERS,
                          dest="parallelDegree",
                          metavar="<parallelDegree>",
