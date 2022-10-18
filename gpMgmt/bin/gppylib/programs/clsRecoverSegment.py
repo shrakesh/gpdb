@@ -263,7 +263,7 @@ class GpRecoverSegmentProgram:
 
         # verify "mode to recover" options
         if self.__options.forceFullResynchronization and self.__options.diffResynchronization:
-            raise ProgramArgumentValidationException("Only one of -f and --differential may be specified")
+            raise ProgramArgumentValidationException("Only one of -F and --differential may be specified")
 
         faultProberInterface.getFaultProber().initializeProber(gpEnv.getCoordinatorPort())
 
