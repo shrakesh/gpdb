@@ -1228,7 +1228,7 @@ Feature: gprecoverseg tests
     And the gp_configuration_history table should contain a backout entry for the primary segment for contents 0,1
 
     And the mode of all the created data directories is changed to 0700
-    When the user runs "gprecoverseg -a"
+    When the user runs "gprecoverseg -aF"
     Then gprecoverseg should return a return code of 0
     And user can start transactions
     And all the segments are running
