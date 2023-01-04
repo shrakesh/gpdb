@@ -265,6 +265,33 @@ class PgRewind(Command):
 
         Command.__init__(self, name, self.cmdStr, LOCAL)
 
+class RemoteSync(Command):
+    """
+    RemoteSync is used to run rsync using source server.
+    """
+    def __init__(self, name, target_datadir, source_host, source_port, progress_file):
+
+        # Construct the source server libpq connection string
+        # We set application_name here so gpstate can identify whether an
+        # incremental recovery is occurring.
+        source_server = "host={} port={} dbname=template1 application_name={}".format(
+                source_host, source_port, RECOVERY_REWIND_APPNAME
+                                                   )
+
+        # Build the pg_rewind command. Do not run pg_rewind if standby.signal
+        # file exists in target data directory because the target instance can
+        # be started up normally as a mirror for WAL replication catch up.
+        rewind_cmd = '[ -f %s/standby.signal ] || PGOPTIONS="-c gp_role=utility" $GPHOME/bin/pg_rewind ' \
+                     '--write-recovery-conf --slot="internal_wal_replication_slot" --source-server="%s" ' \
+                     '--target-pgdata=%s --progress' % (target_datadir, source_server, target_datadir)
+
+        # pg_rewind prints progress updates to stdout, but it also prints
+        # errors relating to relevant failures(like it will not rewind due to
+        # a corrupted pg_control file) to stderr.
+        rewind_cmd = rewind_cmd + " > {} 2>&1".format(pipes.quote(progress_file))
+        self.cmdStr = rewind_cmd
+
+        Command.__init__(self, name, self.cmdStr, LOCAL)
 
 class PgBaseBackup(Command):
     def __init__(self, target_datadir, source_host, source_port, create_slot=False, replication_slot_name=None,

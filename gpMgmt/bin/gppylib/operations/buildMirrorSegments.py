@@ -73,7 +73,7 @@ def get_recovery_progress_pattern():
 #   failoverSegment = segment to recover "to"
 # In other words, we are recovering the failedSegment to the failoverSegment using the liveSegment.
 class GpMirrorToBuild:
-    def __init__(self, failedSegment, liveSegment, failoverSegment, forceFullSynchronization):
+    def __init__(self, failedSegment, liveSegment, failoverSegment, forceFullSynchronization, diffSynchronization):
         checkNotNone("forceFullSynchronization", forceFullSynchronization)
 
         # We need to call this validate function here because addmirrors directly calls GpMirrorToBuild.
@@ -89,6 +89,13 @@ class GpMirrorToBuild:
            process on the server
         """
         self.__forceFullSynchronization = forceFullSynchronization
+
+        """
+                __forceFullSynchronization is true if full resynchronization should be FORCED -- that is, the
+                   existing segment will be cleared and all objects will be transferred by the file resynchronization
+                   process on the server
+                """
+        self.__diffSynchronization = diffSynchronization
 
     def getFailedSegment(self):
         """
@@ -124,6 +131,12 @@ class GpMirrorToBuild:
 
         return False
 
+    def isDiffSynchronization(self):
+        """
+        Returns whether or not this segment to recover needs to recover using differential synchronization method
+        """
+        if self.__diffSynchronization:
+            return True
 
 class GpMirrorListToBuild:
     class Progress:
@@ -671,7 +684,7 @@ class GpMirrorListToBuild:
         segments_to_clean_up = []
         for toRecover in self.__mirrorsToBuild:
             is_in_place = toRecover.getFailedSegment() is not None and toRecover.getFailoverSegment() is None
-            if is_in_place and toRecover.isFullSynchronization():
+            if is_in_place and (toRecover.isFullSynchronization() or toRecover.isDiffSynchronization()):
                 segments_to_clean_up.append(toRecover.getFailedSegment())
 
         if len(segments_to_clean_up) == 0:

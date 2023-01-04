@@ -76,6 +76,33 @@ class IncrementalRecovery(Command):
         self.error_type = RecoveryErrorType.START_ERROR
         start_segment(self.recovery_info, self.logger, self.era)
 
+class DifferentialRecovery(Command):
+    def __init__(self, name, recovery_info, logger, era):
+        self.name = name
+        self.recovery_info = recovery_info
+        self.era = era
+        cmdStr = ''
+        Command.__init__(self, self.name, cmdStr)
+        self.logger = logger
+        self.error_type = RecoveryErrorType.DEFAULT_ERROR
+
+    @set_recovery_cmd_results
+    def run(self):
+        self.logger.info("Running rsync with progress output temporarily in %s" % self.recovery_info.progress_file)
+        self.error_type = RecoveryErrorType.SYNC_ERROR
+        cmd = PgRewind('rewind dbid: {}'.format(self.recovery_info.target_segment_dbid),
+                       self.recovery_info.target_datadir, self.recovery_info.source_hostname,
+                       self.recovery_info.source_port, self.recovery_info.progress_file)
+        cmd.run(validateAfter=True)
+        self.logger.info("Successfully ran pg_rewind for dbid: {}".format(self.recovery_info.target_segment_dbid))
+
+        # Updating port number on conf after recovery
+        self.error_type = RecoveryErrorType.UPDATE_ERROR
+        update_port_in_conf(self.recovery_info, self.logger)
+
+        self.error_type = RecoveryErrorType.START_ERROR
+        start_segment(self.recovery_info, self.logger, self.era)
+
 
 def start_segment(recovery_info, logger, era):
     seg = Segment(None, None, None, None, None, None, None, None,
@@ -112,7 +139,13 @@ class SegRecovery(object):
     def get_recovery_cmds(self, seg_recovery_info_list, forceoverwrite, logger, era):
         cmd_list = []
         for seg_recovery_info in seg_recovery_info_list:
-            if seg_recovery_info.is_full_recovery:
+            if seg_recovery_info.is_diff_recovery:
+                cmd = DifferentialRecovery(name='Run rsync',
+                                           recovery_info=seg_recovery_info,
+                                           logger=logger,
+                                           era=era)
+
+            elif seg_recovery_info.is_full_recovery:
                 cmd = FullRecovery(name='Run pg_basebackup',
                                    recovery_info=seg_recovery_info,
                                    forceoverwrite=forceoverwrite,

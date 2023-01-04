@@ -124,7 +124,7 @@ class GpRecoverSegmentProgram:
             return GpSegmentRebalanceOperation(gpEnv, gpArray, self.__options.parallelDegree, self.__options.parallelPerHost)
         else:
             instance = RecoveryTripletsFactory.instance(gpArray, self.__options.recoveryConfigFile, self.__options.newRecoverHosts, self.__options.parallelDegree)
-            segs = [GpMirrorToBuild(t.failed, t.live, t.failover, self.__options.forceFullResynchronization) for t in instance.getTriplets()]
+            segs = [GpMirrorToBuild(t.failed, t.live, t.failover, self.__options.forceFullResynchronization, self.__options.diffResynchronization) for t in instance.getTriplets()]
             return GpMirrorListToBuild(segs, self.__pool, self.__options.quiet,
                                        self.__options.parallelDegree,
                                        instance.getInterfaceHostnameWarnings(),
@@ -184,7 +184,7 @@ class GpRecoverSegmentProgram:
 
                 tabLog = TableLogger()
 
-                syncMode = "Full" if toRecover.isFullSynchronization() else "Incremental"
+                syncMode = "Full" if (toRecover.isFullSynchronization() or toRecover.isDiffSynchronization) else "Incremental"
                 tabLog.info(["Synchronization mode", "= " + syncMode])
                 programIoUtils.appendSegmentInfoForOutput("Failed", gpArray, toRecover.getFailedSegment(), tabLog)
                 programIoUtils.appendSegmentInfoForOutput("Recovery Source", gpArray, toRecover.getLiveSegment(),
