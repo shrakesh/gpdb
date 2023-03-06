@@ -12,6 +12,7 @@ import pwd
 import socket
 import signal
 import uuid
+import pipes
 
 from gppylib.gplog import get_default_logger
 from gppylib.commands.base import *
@@ -511,12 +512,44 @@ def canonicalize(addr):
 
 
 class Rsync(Command):
-    def __init__(self, name, srcFile, dstFile, srcHost=None, dstHost=None, recursive=False, ctxt=LOCAL,
-                 remoteHost=None):
+    def __init__(self, name, srcFile, dstFile, srcHost=None, dstHost=None, recursive=False,
+                 verbose=True, archive_mode=True, checksum=False, delete=False, progress=False,
+                 stats=False, dry_run=False, bwlimit=None, exclude_list=[], ctxt=LOCAL,
+                 remoteHost=None, compress=False, progress_file=None):
+
         cmdStr = findCmdInPath('rsync') + " "
 
         if recursive:
             cmdStr = cmdStr + "-r "
+
+        if verbose:
+            cmdStr = cmdStr + "-v "
+
+        if archive_mode:
+            cmdStr = cmdStr + "-a "
+
+        # To skip the files based on checksum, not modification time and size
+        if checksum:
+            cmdStr = cmdStr + "-c "
+
+        if progress:
+            cmdStr = cmdStr + "--progress "
+
+        # To show file transfer stats
+        if stats:
+            cmdStr = cmdStr + "--stats "
+
+        if bwlimit is not None:
+            cmdStr = cmdStr + "--bwlimit {} ".format(bwlimit)
+
+        if dry_run:
+            cmdStr = cmdStr + "--dry-run "
+
+        if delete:
+            cmdStr = cmdStr + "--delete "
+
+        if compress:
+            cmdStr = cmdStr + "--compress "
 
         if srcHost:
             cmdStr = cmdStr + canonicalize(srcHost) + ":"
@@ -524,7 +557,14 @@ class Rsync(Command):
 
         if dstHost:
             cmdStr = cmdStr + canonicalize(dstHost) + ":"
-        cmdStr = cmdStr + dstFile
+        cmdStr = cmdStr + dstFile + " "
+
+        # exclude certain unnecessary directories from being copied
+        for pattern in exclude_list:
+            cmdStr = cmdStr + "--exclude {} ".format(pattern)
+
+        if progress_file:
+            cmdStr = cmdStr + '> {} 2>&1'.format(pipes.quote(progress_file))
 
         Command.__init__(self, name, cmdStr, ctxt, remoteHost)
 
