@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 
+import sys
+
 from gppylib.recoveryinfo import RecoveryErrorType
-from gppylib.commands.pg import PgBaseBackup, PgRewind
+from gppylib.commands.pg import PgBaseBackup, PgRewind, PgReplicationSlot
+from gppylib.commands.unix import Rsync
 from recovery_base import RecoveryBase, set_recovery_cmd_results
-from gppylib.commands.base import Command
+from gppylib.commands.base import Command, LOCAL
 from gppylib.commands.gp import SegmentStart
 from gppylib.gparray import Segment
 from gppylib.commands.gp import ModifyConfSetting
+from gppylib.db.catalog import RemoteQueryCommand
+from gppylib.programs.clsRecoverSegment_triples import is_backup_in_progress
 
 
 class FullRecovery(Command):
@@ -77,6 +82,203 @@ class IncrementalRecovery(Command):
         start_segment(self.recovery_info, self.logger, self.era)
 
 
+class DifferentialRecovery(Command):
+    def __init__(self, name, recovery_info, logger, era):
+        self.name = name
+        self.recovery_info = recovery_info
+        self.era = era
+        self.logger = logger
+        self.error_type = RecoveryErrorType.DEFAULT_ERROR
+        self.replication_slot = PgReplicationSlot(self.recovery_info.source_hostname, self.recovery_info.source_port,
+                                                  'internal_wal_replication_slot')
+
+    @set_recovery_cmd_results
+    def run(self):
+        try:
+            self.logger.info("Running differential recovery with progress output temporarily in {}".format(
+                self.recovery_info.progress_file))
+            self.error_type = RecoveryErrorType.RSYNC_ERROR
+
+            """ drop replication slot 'internal_wal_replication_slot' """
+
+            if self.replication_slot.slot_exists():
+                self.replication_slot.drop_slot()
+
+            """ start backup with label differential_backup """
+            self.pg_start_backup()
+
+            """create replication slot pg_create_physical_replication_slot('internal_wal_replication_slot', true,
+            false) """
+            if not self.replication_slot.create_slot():
+                raise Exception("Failed to create replication slot")
+
+            """ rsync pg_data and tablespace directories including all the WAL files """
+            self.sync_pg_data()
+
+            """ rsync tablespace directories which are out of pg-data-directory """
+            self.sync_tablespaces()
+
+            """ stop backup and remove created label """
+            self.pg_stop_backup()
+
+            """ Write the postresql.auto.conf and internal.auto.conf files """
+            self.write_conf_files()
+
+            """ sync pg_wal directory and pg_control file just before starting the segment """
+            self.sync_wals_and_control_file()
+
+            self.logger.info(
+                "Successfully ran differential recovery for dbid {}".format(self.recovery_info.target_segment_dbid))
+
+            """ Updating port number on conf after recovery """
+            self.error_type = RecoveryErrorType.UPDATE_ERROR
+            update_port_in_conf(self.recovery_info, self.logger)
+
+            self.error_type = RecoveryErrorType.START_ERROR
+            start_segment(self.recovery_info, self.logger, self.era)
+
+        except Exception as e:
+            self.cleanup()
+            raise Exception("Differential recovery failed: {}".format(e))
+
+    def sync_pg_data(self):
+        self.logger.debug('Syncing pg_data of dbid {}'.format(self.recovery_info.target_segment_dbid))
+
+        # List containing directories and files that should be excluded while taking backup. This list is prepared based
+        # on excludeDirContents and excludeFiles consts from postgres source file src/backend/backup/basebackup.c
+        rsync_exclude_list = [
+            "/log",  # logs are segment specific so it can be skipped
+            "pgsql_tmp",
+            "postgresql.auto.conf.tmp",
+            "postgresql.auto.conf",
+            "current_logfiles.tmp",
+            "pg_internal.init",
+            "postmaster.pid",
+            "postmaster.opts",
+            "recovery.conf",  # will be created by pg_basebackup --writeconffilesonly
+            "standby.signal",  # will be created later point of time
+            "tablespace_map",
+            "backup_label",
+            "pg_dynshmem",
+            "pg_notify/*",
+            "pg_replslot/*",
+            "pg_serial/*",
+            "pg_stat_tmp/*",
+            "pg_snapshots/*",
+            "pg_subtrans/*",
+            "/db_dumps",  # as we exclude during pg_basebackup
+            "/promote",  # as we exclude during pg_basebackup
+        ]
+        """
+            Rsync options used:
+                srcFile: source datadir
+                dstFile: destination datadir or file that needs to be synced
+                srcHost: source host
+                exclude_list: to exclude specified files and directories to copied or synced with target
+                delete: delete the files on target which does not exist on source
+                checksum: to skip files being synced based on checksum, not modification time and size
+                progress: to show the progress of rsync execution, like % transferred
+        """
+        cmd = Rsync(name="Sync pg data_dir", srcFile=self.recovery_info.source_datadir + "/",
+                    dstFile=self.recovery_info.target_datadir,
+                    srcHost=self.recovery_info.source_hostname, exclude_list=rsync_exclude_list,
+                    delete=True, checksum=True, progress=True, progress_file=self.recovery_info.progress_file)
+        cmd.run(validateAfter=True)
+
+    def pg_start_backup(self, backup_label="differential_backup"):
+        sql = "SELECT pg_start_backup('{label}');".format(label=backup_label)
+        try:
+            query_cmd = RemoteQueryCommand("Start backup", sql, self.recovery_info.source_hostname,
+                                           self.recovery_info.source_port)
+            query_cmd.run()
+        except Exception as e:
+            raise Exception("Failed to query pg_start_backup() for segment with host {} and port {}".format(
+                self.recovery_info.source_hostname,
+                self.recovery_info.source_port))
+        self.logger.debug("Successfully started backup for segment on host {}, port {}".
+                          format(self.recovery_info.source_hostname, self.recovery_info.source_port))
+
+    def pg_stop_backup(self):
+        sql = "SELECT pg_stop_backup();"
+        try:
+            query_cmd = RemoteQueryCommand("Stop backup", sql, self.recovery_info.source_hostname,
+                                           self.recovery_info.source_port)
+            query_cmd.run()
+        except Exception as e:
+            raise Exception("Failed to query pg_stop_backup() for segment with host {} and port {}".
+                            format(self.recovery_info.source_hostname, self.recovery_info.source_port))
+
+        self.logger.debug("Successfully stopped backup for segment on host {}, port {}".
+                          format(self.recovery_info.source_hostname, self.recovery_info.source_port))
+
+    def write_conf_files(self):
+        self.logger.debug(
+            "Writing recovery.conf and internal.auto.conf files for dbid {}".format(
+                self.recovery_info.target_segment_dbid))
+        cmd = PgBaseBackup(self.recovery_info.target_datadir,
+                           self.recovery_info.source_hostname,
+                           str(self.recovery_info.source_port),
+                           writeconffilesonly=True,
+                           target_gp_dbid=self.recovery_info.target_segment_dbid,
+                           recovery_mode=False)
+        self.logger.debug("Running pg_basebackup to only write configuration files")
+        cmd.run(validateAfter=True)
+
+    def sync_wals_and_control_file(self):
+        self.logger.debug("Syncing pg_wal directory of dbid {}".format(self.recovery_info.target_segment_dbid))
+        cmd = Rsync(name="Sync wal files", srcFile="{}/pg_wal/".format(self.recovery_info.source_datadir),
+                    dstFile="{}/pg_wal/".format(self.recovery_info.target_datadir), progress=True, checksum=True,
+                    srcHost=self.recovery_info.source_hostname, progress_file=self.recovery_info.progress_file)
+        cmd.run(validateAfter=True)
+
+        self.logger.debug("Syncing pg_control file of dbid {}".format(self.recovery_info.target_segment_dbid))
+        cmd = Rsync(name="Sync control file", srcFile="{}/global/pg_control".format(self.recovery_info.source_datadir),
+                    dstFile="{}/global/pg_control".format(self.recovery_info.target_datadir), progress=True,
+                    checksum=True,
+                    srcHost=self.recovery_info.source_hostname, progress_file=self.recovery_info.progress_file)
+        cmd.run(validateAfter=True)
+
+    def get_segment_tablespace_locations(self):
+        sql = "SELECT distinct(tblspc_loc) FROM ( SELECT oid FROM pg_tablespace WHERE spcname NOT IN " \
+              "('pg_default', 'pg_global')) AS q,LATERAL gp_tablespace_location(q.oid);"
+        try:
+            query = RemoteQueryCommand("Get tablespace locations", sql, self.recovery_info.source_hostname,
+                                       self.recovery_info.source_port)
+            query.run()
+        except Exception as e:
+            raise Exception("Failed to get segment tablespace locations for segment with host {} and port {}".format(
+                self.recovery_info.source_hostname,self.recovery_info.source_port))
+
+        self.logger.debug("Successfully got tablespace locations for segment with host {}, port {}".
+                          format(self.recovery_info.source_hostname, self.recovery_info.source_port))
+        return query.get_results()
+
+    def sync_tablespaces(self):
+        self.logger.debug(
+            "Syncing tablespaces of dbid {} which are outside of data_dir".format(
+                self.recovery_info.target_segment_dbid))
+
+        # get the tablespace locations
+        tablespaces = self.get_segment_tablespace_locations()
+
+        for tablespace_location in tablespaces:
+            if not tablespace_location[0].startswith(self.recovery_info.target_datadir):
+                cmd = Rsync(name="Sync tabelspace",
+                            srcFile=tablespace_location[0] + "/",
+                            dstFile=tablespace_location[0],
+                            srcHost=self.recovery_info.source_hostname,
+                            progress=True,
+                            checksum=True,
+                            progress_file=self.recovery_info.progress_file)
+                cmd.run(validateAfter=True)
+
+    def cleanup(self):
+        self.logger.debug("Doing clean up as differential recovery has failed")
+        if self.error_type == RecoveryErrorType.RSYNC_ERROR and \
+            is_backup_in_progress(self.recovery_info.source_hostname, self.recovery_info.source_port):
+            self.pg_stop_backup()
+
+
 def start_segment(recovery_info, logger, era):
     seg = Segment(None, None, None, None, None, None, None, None,
                   recovery_info.target_port, recovery_info.target_datadir)
@@ -118,11 +320,17 @@ class SegRecovery(object):
                                    forceoverwrite=forceoverwrite,
                                    logger=logger,
                                    era=era)
+            elif seg_recovery_info.is_differential_recovery:
+                cmd = DifferentialRecovery(name='Run rsync',
+                                           recovery_info=seg_recovery_info,
+                                           logger=logger,
+                                           era=era)
             else:
                 cmd = IncrementalRecovery(name='Run pg_rewind',
                                           recovery_info=seg_recovery_info,
                                           logger=logger,
                                           era=era)
+
             cmd_list.append(cmd)
         return cmd_list
 
