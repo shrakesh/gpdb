@@ -9,9 +9,11 @@ from gppylib.operations.detect_unreachable_hosts import get_unreachable_segment_
 from gppylib.parseutils import line_reader, check_values, canonicalize_address
 from gppylib.utils import checkNotNone, normalizeAndValidateInputPath
 from gppylib.gparray import GpArray, Segment
+from gppylib.db.catalog import RemoteQueryCommand
 from gppylib.commands.gp import RECOVERY_REWIND_APPNAME
 
 logger = gplog.get_default_logger()
+
 
 def get_segments_with_running_basebackup():
     """
@@ -33,6 +35,28 @@ def get_segments_with_running_basebackup():
     if len(segments_with_running_basebackup) == 0:
         logger.debug("No basebackup running")
     return segments_with_running_basebackup
+
+
+def is_backup_in_progress(hostname, port):
+    """
+        Returns true if backup is in progress for the segment
+    """
+    logger.debug(
+        "Checking if backup is already in progress for the source server with host {} and port {}".format(
+            hostname, port))
+
+    sql = "SELECT pg_is_in_backup()"
+    try:
+        query_cmd = RemoteQueryCommand("pg_is_in_backup", sql, hostname, port)
+        query_cmd.run()
+        res = query_cmd.get_results()
+
+    except Exception as e:
+        raise Exception("Failed to query pg_is_in_backup() for segment with hostname {}, port {}, error: {}".format(
+            hostname, str(port), str(e)))
+
+    return res[0][0]
+
 
 
 def is_pg_rewind_running(hostname, port):
@@ -242,6 +266,15 @@ class RecoveryTriplets(abc.ABC):
                 if is_pg_rewind_running(peer.getSegmentHostName(), peer.getSegmentPort()):
                     logger.debug("Skipping incremental recovery of segment on host {} and port {} because it has an "
                                  "active pg_rewind connection with segment on host {} and port {}".format(
+                        req.failed.getSegmentHostName(),
+                        req.failed.getSegmentPort(), peer.getSegmentHostName(), peer.getSegmentPort()))
+                    continue
+
+                # if source server(peer) is already in backup, we can not start differential recovery of the failed
+                # segment
+                if is_backup_in_progress(peer.getSegmentHostName(), peer.getSegmentPort()):
+                    logger.debug("Skipping differential recovery of segment on host {} and port {} because it's peer "
+                                 "segment on host {} and port {} has already backup in progress".format(
                         req.failed.getSegmentHostName(),
                         req.failed.getSegmentPort(), peer.getSegmentHostName(), peer.getSegmentPort()))
                     continue
