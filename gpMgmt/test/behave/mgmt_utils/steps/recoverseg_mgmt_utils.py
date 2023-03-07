@@ -217,7 +217,7 @@ def impl(context, utility, output, segment_type):
 def impl(context, utility, recovery_type, content_ids):
     if content_ids == "None":
         return
-    if recovery_type not in ("incremental", "full", "start"):
+    if recovery_type not in ("incremental", "full", "differential","start"):
         raise Exception("Expected recovery_type to be 'incremental', 'full' or 'start, but found '%s'." % recovery_type)
     content_list = [int(c) for c in content_ids.split(',')]
 
@@ -230,6 +230,9 @@ def impl(context, utility, recovery_type, content_ids):
             expected = r'hostname: {}; port: {}; logfile: {}/gpAdminLogs/pg_{}.\d{{8}}_\d{{6}}.dbid{}.out; recoverytype: {}'.format(
                 segment.getSegmentHostName(), segment.getSegmentPort(), os.path.expanduser("~"),
                 'rewind' if recovery_type == 'incremental' else 'basebackup', segment.getSegmentDbId(), recovery_type)
+        if recovery_type == 'differential':
+            expected = r'hostname: {}; port: {}; logfile: {}/gpAdminLogs/rsync.\d{{8}}_\d{{6}}.dbid{}.out; recoverytype: {}'.format(
+                segment.getSegmentHostName(), segment.getSegmentPort(), os.path.expanduser("~"),segment.getSegmentDbId(), recovery_type)
         elif recovery_type == 'start':
             expected = r'hostname: {}; port: {}; datadir: {}'.format(segment.getSegmentHostName(), segment.getSegmentPort(),
                                                                      segment.getSegmentDataDirectory())
@@ -294,8 +297,11 @@ def recovery_fail_check(context, recovery_type, content_ids, utility):
     elif recovery_type == 'full':
         print_msg = 'pg_basebackup: error: could not access directory' #TODO also assert for the directory location here
         logfile_name = 'pg_basebackup*'
+    elif recovery_type == 'differential':
+        print_msg = 'rsync error: some files/attrs were not transferred'
+        logfile_name = 'rsync*'
     else:
-        raise Exception("Expected recovery_type to be 'incremental', 'full' but found '%s'." % recovery_type)
+        raise Exception("Expected recovery_type to be 'incremental', 'full', 'differential' but found '%s'." % recovery_type)
     context.execute_steps('''
     Then gprecoverseg should return a return code of {return_code}
     And user can start transactions
