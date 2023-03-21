@@ -714,3 +714,19 @@ elif curr_platform == OPENBSD:
     SYSTEM = OpenBSDPlatform();
 else:
     raise Exception("Platform %s is not supported.  Supported platforms are: %s", SYSTEM, str(platform_list))
+
+
+# --------------check SCP is available and has execute permission on host-------------------
+def isScpEnabled(hostlist):
+    for host in hostlist:
+        cmd = Command("locate executable file of scp", cmdStr="which scp", ctxt=REMOTE, remoteHost=host)
+        try:
+            cmd.run(validateAfter=True)
+        except Exception as e:
+            print 'Unable to get the executable file : {0}' .format(str(e))
+            return False
+
+        if cmd.get_results().rc != 0:
+            return False
+
+    return True

@@ -84,3 +84,11 @@ Feature: Tests for gpcheckperf
     | matrix test | M        |
     | network test| N        |
 
+  @demo_cluster
+    @concourse_cluster
+  Scenario: gpcheckperf runs with scp not executable
+    Given the database is running
+    And   remove scp executable permission
+    When  the user runs "gpcheckperf -h localhost -r d -d /tmp -S 10MB"
+    Then  gpcheckperf should return a return code of 0
+    And   restore scp executable permission

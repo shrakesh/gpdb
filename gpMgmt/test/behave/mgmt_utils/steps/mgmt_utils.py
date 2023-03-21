@@ -3987,3 +3987,21 @@ def impl(context):
 def impl(context):
      cmd = Command(name='create input host file', cmdStr='echo sdw1 > /tmp/hostfile1;echo cdw >> /tmp/hostfile1;')
      cmd.run(validateAfter=True)
+
+@given('remove scp executable permission')
+def impl(context):
+    cmd = Command(name='locate the scp executable', cmdStr='which scp')
+    cmd.run(validateAfter=True)
+    scp_exe = cmd.get_stdout().strip()
+    cmd_str = "sudo chmod -x {}".format(scp_exe)
+    run_command(context, cmd_str)
+    if context.ret_code != 0:
+        raise Exception('Failed to remove exceute permission: %s' % context.error_message)
+
+@then('restore scp executable permission')
+def impl(context):
+    cmd_str = "sudo chmod +x /usr/bin/scp"
+    run_command(context, cmd_str)
+    if context.ret_code != 0:
+        raise Exception('Failed to restore exceute permission: %s' % context.error_message)
+

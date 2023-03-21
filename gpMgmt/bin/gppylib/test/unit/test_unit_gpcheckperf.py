@@ -1,7 +1,8 @@
 import imp
 import os
+import posix
 import sys
-from mock import patch
+from mock import Mock, patch, call
 from gppylib.test.unit.gp_unittest import GpTestCase,run_tests
 
 class GpCheckPerf(GpTestCase):
@@ -61,6 +62,26 @@ class GpCheckPerf(GpTestCase):
         self.subject.parseCommandLine()
         self.assertEqual(self.subject.GV.opt['-S'], 246.0)
 
+    @patch('gppylib.commands.unix.isScpEnabled', return_value=False)
+    @patch('gpcheckperf.gpsync', return_value=(True, None))
+    @patch('gpcheckperf.getHostList', return_value=['localhost'])
+    def test_scp_not_enabled(self,mock_hostlist,mock_gpsync, mock_isScpEnabled):
+        src = '%s/lib/multidd' % os.path.abspath(os.path.dirname(__file__) + "/../../../")
+        target = '/tmp/gpcheckperf_$USER/multidd'
+        sys.argv = ["gpcheckperf", "-h", "locahost", "-r", "d", "-d", "/tmp"]
+        self.subject.main()
+        mock_gpsync.assert_called_with(src,target)
+
+    @patch('gppylib.commands.unix.isScpEnabled', return_value=True)
+    @patch('gpcheckperf.gpscp', return_value=(True, None))
+    @patch('gpcheckperf.getHostList', return_value=['localhost'])
+    def test_scp_enabled(self, mock_hostlist, mock_gpscp,mock_isScpEnabled):
+
+        src = '%s/lib/multidd' % os.path.abspath(os.path.dirname(__file__) + "/../../../")
+        target = '=:/tmp/gpcheckperf_$USER/multidd'
+        sys.argv = ["gpcheckperf", "-h", "locahost", "-r", "d", "-d", "/tmp"]
+        self.subject.main()
+        mock_gpscp.assert_called_with(src, target)
 
 if __name__ == '__main__':
     run_tests()
