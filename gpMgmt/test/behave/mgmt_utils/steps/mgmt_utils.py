@@ -1248,16 +1248,22 @@ def get_open_port():
     return port
 
 
-@given('"{path}" has its permissions set to "{perm}"')
-def impl(context, path, perm):
+@given('"{path}" has its permissions set to "{perm}" on {host}')
+def impl(context, path, perm, host):
     path = os.path.expandvars(path)
     if not os.path.exists(path):
         raise Exception('Path does not exist! "%s"' % path)
-    old_permissions = os.stat(path).st_mode  # keep it as a number that has a meaningful representation in octal
+    cmd_str = "stat -c '%a' {0}".format(path)
+    cmd = Command("change permission", cmdStr=cmd_str, ctxt=REMOTE, remoteHost=host)
+    cmd.run(validateAfter=True)
+    old_permissions = cmd.get_stdout().strip()
     test_permissions = int(perm, 8)          # accept string input with octal semantics and convert to a raw number
-    os.chmod(path, test_permissions)
+    cmd_str = "sudo chmod {0} {1}".format(test_permissions, path)
+    cmd = Command("change permission", cmdStr=cmd_str, ctxt=REMOTE, remoteHost=host)
+    cmd.run(validateAfter=True)
     context.path_for_which_to_restore_the_permissions = path
     context.permissions_to_restore_path_to = old_permissions
+    context.host_to_restore_path_to = host
 
 
 @then('rely on environment.py to restore path permissions')
@@ -3987,21 +3993,3 @@ def impl(context):
 def impl(context):
      cmd = Command(name='create input host file', cmdStr='echo sdw1 > /tmp/hostfile1;echo cdw >> /tmp/hostfile1;')
      cmd.run(validateAfter=True)
-
-@given('remove scp executable permission')
-def impl(context):
-    cmd = Command(name='locate the scp executable', cmdStr='which scp')
-    cmd.run(validateAfter=True)
-    scp_exe = cmd.get_stdout().strip()
-    cmd_str = "sudo chmod -x {}".format(scp_exe)
-    run_command(context, cmd_str)
-    if context.ret_code != 0:
-        raise Exception('Failed to remove exceute permission: %s' % context.error_message)
-
-@then('restore scp executable permission')
-def impl(context):
-    cmd_str = "sudo chmod +x /usr/bin/scp"
-    run_command(context, cmd_str)
-    if context.ret_code != 0:
-        raise Exception('Failed to restore exceute permission: %s' % context.error_message)
-

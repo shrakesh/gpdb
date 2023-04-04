@@ -718,15 +718,17 @@ else:
 
 # --------------check SCP is available and has execute permission on host-------------------
 def isScpEnabled(hostlist):
+    """
+    check SCP is available and has execute permission on hosts
+    :param hostlist: list of hosts involved in gpcheckperf operation
+    :return: true if scp is enabled on all hosts else false
+    """
     for host in hostlist:
         cmd = Command("locate executable file of scp", cmdStr="which scp", ctxt=REMOTE, remoteHost=host)
         try:
             cmd.run(validateAfter=True)
         except Exception as e:
-            print 'Unable to get the executable file : {0}' .format(str(e))
-            return False
-
-        if cmd.get_results().rc != 0:
+            print('[Warning] Either scp is not available or does not have execute permission on host:{0}' .format(host))
             return False
 
     return True

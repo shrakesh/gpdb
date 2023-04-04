@@ -123,28 +123,46 @@ def gpscp(src, dst):
     p = subprocess.Popen(c, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     out = p.stdout.read(-1)
     rc = p.wait()
-    return not rc, out
+    if rc:
+        sys.exit('[Error] command failed: gpscp {0} =:{1} with output: {2}'.format(src, dst, out))
+
+
+def run_cmd(cmd, peer):
+    """
+    To create subprocess on specified host with given command
+    """
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc.x_cmd = cmd
+    proc.x_peer = peer
+    return proc
 
 
 def gpsync(src, dst):
-    hostlist = getHostList()
-    rsync = 'rsync -q -a -c -e "ssh -o BatchMode=yes -o StrictHostKeyChecking=no"'
+    """
+    It copies files either to or from a remote host, or locally on the current host.
+    rsync options:
+    -a: archive mode, copy all attributes of the original files
+    -c : copy files based on checksum, it will override default behaviour of rsync
+         to skip transferring files with same modification time and size
+    -e: to specify ssh options
+    -P : print information showing the progress of the transfer
+    """
     proc = []
-    for peer in hostlist:
-        cmd = rsync + " " + src + " " + unix.canonicalize(peer) + ":" + dst
-        if GV.opt['-v']: print('[INFO]', cmd)
-        proc.append(subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+    for peer in GV.opt['-h']:
+        cmd = 'rsync -P -a -c -e "ssh -o BatchMode=yes -o StrictHostKeyChecking=no" {0} {1}:{2}' \
+            .format(src, unix.canonicalize(peer), dst)
+        if GV.opt['-v']:
+            print('[Info] {0}' .format(cmd))
+        proc.append(run_cmd(cmd, peer))
 
-    witherror = False
     for p in proc:
         for line in p.stdout.readlines():
-            print('[OUT %s] %s' % ("".join(p.args), line))
-        status = p.wait()
-        if status:
-            print('[ERROR %s] exit %d, cmd - %s' % (p.stderr.read(), status, "".join(p.args)))
-            witherror = True
+            print('[Out {0}] {1}' .format(p.x_peer, line))
+        rc = p.wait()
+        if rc:
+            sys.exit('[Error] command failed for host:{0} cmd:{1} with status:{2} error: "{3}"'
+                     .format(p.x_peer, p.x_cmd, rc, p.stderr.read()))
 
-    return not witherror, None
 
 def getPlatform():
     if sys.platform.find('linux') >= 0:
@@ -420,13 +438,9 @@ def copyExecOver(fname):
         sys.exit('[Exit] file not executable: ' + path)
 
     if _SCP_ENABLED:
-        (ok, out) = gpscp(path, '=:{0}' .format(target))
-        if not ok:
-            sys.exit('[Error] command failed: gpscp {0} =:{1} with output: {2}' . format(path, target, out))
+        gpscp(path, '=:{0}' .format(target))
     else:
-        (ok, out) = gpsync(path, '{0}'.format(target))
-        if not ok:
-            sys.exit('[Error] command failed: gpsync {0} {1} with output: {2}' . format(path, target, out))
+        gpsync(path, '{0}'.format(target))
 
     # chmod +x file
     (ok, out) = gpssh('chmod a+rx %s' % target, GV.opt['-V'])
@@ -965,22 +979,28 @@ def printResult(title, result):
             print '    %s bandwidth (MB/s): %3.2f [%s]' % (title, mbps, h)
     print
 
-def getHostList(includemaster=False):
+
+def getHostList():
+    """
+    To get the list of hosts involved in gpcheckperf operation and passed with
+    -f or -h flog
+    :return: returns a list of hosts
+    """
     hostlist = ssh_utils.HostList()
     for h in GV.opt['-h']:
         hostlist.add(h)
     if GV.opt['-f']:
         hostlist.parseFile(GV.opt['-f'])
-    if includemaster:
-        hostlist.add(unix.getLocalHostname())
+
     try:
         hostlist.checkSSH()
     except ssh_utils.SSHError, e:
-        sys.exit('[ERROR] ' + str(e))
-    hosts = hostlist.filterMultiHomedHosts()
-    if len(hosts) == 0:
+        sys.exit('[Error] {0}' .format(str(e)))
+
+    GV.opt['-h'] = hostlist.filterMultiHomedHosts()
+    if len(GV.opt['-h']) == 0:
         usage('Error: missing hosts in -h and/or -f arguments')
-    return hosts
+    return GV.opt['-h']
 
 
 def main():
@@ -993,8 +1013,7 @@ def main():
         try:
             global _SCP_ENABLED
             # check if scp executable binary is present on the master and all specified host
-            hostlist = getHostList(True)
-            _SCP_ENABLED = unix.isScpEnabled(hostlist)
+            _SCP_ENABLED = unix.isScpEnabled(getHostList() + [unix.getLocalHostname()])
 
             if GV.opt['-r'].find('d') >= 0:
                 print('[Warning] Using %d bytes for disk performance test. This might take some time' % (GV.opt['-S'] * len(GV.opt['-d'])))
@@ -1037,7 +1056,7 @@ def main():
             runTeardown()
 
     except KeyboardInterrupt:
-            print '[Abort] Keyboard Interrupt ...'
+        print('[Abort] Keyboard Interrupt ...')
 
 if __name__ == '__main__':
      main()
