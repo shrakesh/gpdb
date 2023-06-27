@@ -601,6 +601,8 @@ Feature: gprecoverseg tests
     And user can start transactions
     And all files in gpAdminLogs directory are deleted on all hosts in the cluster
     And a sample recovery_progress.file is created from saved lines
+    And we run a sample background script to generate a pid on "master" segment
+    Then a sample gprecoverseg.lock directory is created using the background pid in master_data_directory
     When the user runs "gpstate -e"
     Then gpstate should print "Segments in recovery" to stdout
 #    And gpstate output contains "incremental,incremental,incremental" entries for mirrors of content 0,1,2
@@ -610,6 +612,8 @@ Feature: gprecoverseg tests
 #      | \S+     | [0-9]+ | incremental    | [0-9]+                 | [0-9]+             | [0-9]+\%             |
 #      | \S+     | [0-9]+ | incremental    | [0-9]+                 | [0-9]+             | [0-9]+\%             |
     And all files in gpAdminLogs directory are deleted on all hosts in the cluster
+    And the background pid is killed on "master" segment
+    Then the gprecoverseg lock directory is removed
 
     And the cluster is rebalanced
     And user immediately stops all primary processes for content 0,1,2
@@ -619,17 +623,14 @@ Feature: gprecoverseg tests
     And the user suspend the walsender on the primary on content 0
     Then the user waits until recovery_progress.file is created in gpAdminLogs and verifies its format
     And verify that lines from recovery_progress.file are present in segment progress files in gpAdminLogs
-
+    When the user runs "gpstate -e"
+    Then gpstate should print "Segments in recovery" to stdout
     And the user reset the walsender on the primary on content 0
     And the user waits until saved async process is completed
     And recovery_progress.file should not exist in gpAdminLogs
     And an FTS probe is triggered
     And the user waits until mirror on content 0,1,2 is up
     And user can start transactions
-
-    And a sample recovery_progress.file is created from saved lines
-    When the user runs "gpstate -e"
-    Then gpstate should print "Segments in recovery" to stdout
     And all files in gpAdminLogs directory are deleted on all hosts in the cluster
 
   @demo_cluster
@@ -722,6 +723,32 @@ Feature: gprecoverseg tests
     And verify that lines from recovery_progress.file are present in segment progress files in gpAdminLogs
     And the cluster is rebalanced
 
+
+  @demo_cluster
+  @concourse_cluster
+  Scenario:  SIGHUP on gprecoverseg should not display progress in gpstate -e
+    Given the database is running
+    And all the segments are running
+    And the segments are synchronized
+    And all files in gpAdminLogs directory are deleted on all hosts in the cluster
+    And user immediately stops all primary processes for content 0,1,2
+    And user can start transactions
+    And sql "DROP TABLE IF EXISTS test_recoverseg; CREATE TABLE test_recoverseg AS SELECT generate_series(1,100000000) AS a;" is executed in "postgres" db
+    And the user suspend the walsender on the primary on content 0
+    When the user asynchronously runs "gprecoverseg -aF" and the process is saved
+    Then the user waits until recovery_progress.file is created in gpAdminLogs and verifies its format
+    Then verify if the gprecoverseg.lock directory is present in master_data_directory
+    When the user runs "gpstate -e"
+    Then gpstate should print "Segments in recovery" to stdout
+    When the user asynchronously sets up to end gprecoverseg process with SIGHUP
+    And the user waits until saved async process is completed
+    When the user runs "gpstate -e"
+    Then gpstate should not print "Segments in recovery" to stdout
+    Then the user reset the walsender on the primary on content 0
+    And the user waits until mirror on content 0,1,2 is up
+    And the gprecoverseg lock directory is removed
+    And the cluster is rebalanced
+
   @demo_cluster
   @concourse_cluster
   Scenario: gprecoverseg mixed recovery segments come up even if one basebackup takes longer
@@ -781,6 +808,184 @@ Feature: gprecoverseg tests
 
     And the cluster is recovered in full and rebalanced
     And the row count from table "test_recoverseg" in "postgres" is verified against the saved data
+
+   @concourse_cluster
+    Scenario: Propagating env var
+    Given the database is running
+    And An entry to send SUSPEND_PG_REWIND env var is added on all hosts of cluster
+    And An entry to accept SUSPEND_PG_REWIND env var is added on all hosts of cluster
+
+  @concourse_cluster
+  Scenario: gprecoverseg gives warning if pg_rewind already running for one failed segments
+    Given the database is running
+    And all the segments are running
+    And the segments are synchronized
+    And all files in gpAdminLogs directory are deleted on all hosts in the cluster
+    And user immediately stops all primary processes for content 2
+    And user can start transactions
+    And the environment variable "SUSPEND_PG_REWIND" is set to "600"
+    And the user asynchronously runs "gprecoverseg -a" and the process is saved
+    Then the user just waits until recovery_progress.file is created in gpAdminLogs
+    And verify that mirror on content 2 is down
+    And the gprecoverseg lock directory is removed
+    And user immediately stops all primary processes for content 0,1
+    And the user waits until mirror on content 0,1 is down
+    And an FTS probe is triggered
+    And user can start transactions
+    And "SUSPEND_PG_REWIND" environment variable should be restored
+    When the user runs "gprecoverseg -a"
+    Then gprecoverseg should return a return code of 0
+    And gprecoverseg should print "Found pg_rewind running for segments with contentIds [2], skipping recovery of these segments" to logfile
+    And verify that mirror on content 2 is down
+    And verify that mirror on content 0,1 is up
+    And pg_rewind is killed on mirror with content 2
+    And the user asynchronously sets up to end gprecoverseg process with SIGHUP
+    And the gprecoverseg lock directory is removed
+    And verify that mirror on content 2 is down
+    And the user runs "gprecoverseg -a"
+    And gprecoverseg should return a return code of 0
+    And an FTS probe is triggered
+    And the user waits until mirror on content 0,1,2 is up
+    And the cluster is rebalanced
+
+  @concourse_cluster
+  Scenario: gprecoverseg gives warning if pg_rewind already running for some failed segments
+    Given the database is running
+    And all the segments are running
+    And the segments are synchronized
+    And all files in gpAdminLogs directory are deleted on all hosts in the cluster
+    And user immediately stops all primary processes for content 2,3
+    And user can start transactions
+    And the environment variable "SUSPEND_PG_REWIND" is set to "600"
+    And the user asynchronously runs "gprecoverseg -a" and the process is saved
+    Then the user just waits until recovery_progress.file is created in gpAdminLogs
+    And verify that mirror on content 2,3 is down
+    And the gprecoverseg lock directory is removed
+    And user immediately stops all primary processes for content 0,1
+    And the user waits until mirror on content 0,1 is down
+    And an FTS probe is triggered
+    And user can start transactions
+    And "SUSPEND_PG_REWIND" environment variable should be restored
+    When the user runs "gprecoverseg -a"
+    Then gprecoverseg should return a return code of 0
+    And gprecoverseg should print "Found pg_rewind running for segments with contentIds [2, 3], skipping recovery of these segments" to logfile
+    And verify that mirror on content 2,3 is down
+    And verify that mirror on content 0,1 is up
+    And pg_rewind is killed on mirror with content 2,3
+    And the user asynchronously sets up to end gprecoverseg process with SIGHUP
+    And the gprecoverseg lock directory is removed
+    And verify that mirror on content 2,3 is down
+    And the user runs "gprecoverseg -a"
+    And gprecoverseg should return a return code of 0
+    And an FTS probe is triggered
+    And the user waits until mirror on content 0,1,2,3 is up
+    And the cluster is rebalanced
+
+  @concourse_cluster
+  Scenario: gprecoverseg gives warning if pg_rewind already running for all failed segments
+    Given the database is running
+    And all the segments are running
+    And the segments are synchronized
+    And all files in gpAdminLogs directory are deleted on all hosts in the cluster
+    And user immediately stops all primary processes for content 0,1,2,3
+    And user can start transactions
+    And the environment variable "SUSPEND_PG_REWIND" is set to "600"
+    And the user asynchronously runs "gprecoverseg -a" and the process is saved
+    Then the user just waits until recovery_progress.file is created in gpAdminLogs
+    And verify that mirror on content 0,1,2,3 is down
+    And the gprecoverseg lock directory is removed
+    And an FTS probe is triggered
+    And user can start transactions
+    When the user runs "gprecoverseg -aF"
+    Then gprecoverseg should return a return code of 0
+    And gprecoverseg should print "Found pg_rewind running for segments with contentIds [0, 1, 2, 3], skipping recovery of these segments" to logfile
+    And verify that mirror on content 0,1,2,3 is down
+    And pg_rewind is killed on mirror with content 0,1,2,3
+    And the user asynchronously sets up to end gprecoverseg process with SIGHUP
+    And the gprecoverseg lock directory is removed
+    And verify that mirror on content 0,1,2,3 is down
+    And "SUSPEND_PG_REWIND" environment variable should be restored
+    And the user runs "gprecoverseg -a"
+    And gprecoverseg should return a return code of 0
+    And an FTS probe is triggered
+    And the user waits until mirror on content 0,1,2,3 is up
+    And the cluster is rebalanced
+
+  @concourse_cluster
+  Scenario: gprecoverseg -i gives warning if pg_rewind already running for some of the failed segments
+    Given the database is running
+    And all the segments are running
+    And the segments are synchronized
+    And all files in gpAdminLogs directory are deleted on all hosts in the cluster
+    And user immediately stops all primary processes for content 0,1
+    And user can start transactions
+    And the environment variable "SUSPEND_PG_REWIND" is set to "600"
+    And the user asynchronously runs "gprecoverseg -a" and the process is saved
+    And the user just waits until recovery_progress.file is created in gpAdminLogs
+    And verify that mirror on content 0,1 is down
+    And the gprecoverseg lock directory is removed
+    And user immediately stops all primary processes for content 2,3
+    And the user waits until mirror on content 2,3 is down
+    And an FTS probe is triggered
+    And user can start transactions
+    Then "SUSPEND_PG_REWIND" environment variable should be restored
+    Given a gprecoverseg directory under '/tmp' with mode '0700' is created
+    And a gprecoverseg input file is created
+    And edit the input file to recover mirror with content 0 full inplace
+    And edit the input file to recover mirror with content 1 incremental
+    And edit the input file to recover mirror with content 2 incremental
+    And edit the input file to recover mirror with content 3 incremental
+    When the user runs gprecoverseg with input file and additional args "-a"
+    Then gprecoverseg should return a return code of 0
+    And gprecoverseg should print "Found pg_rewind running for segments with contentIds [0, 1], skipping recovery of these segments" to logfile
+    And verify that mirror on content 2,3 is up
+    And verify that mirror on content 0,1 is down
+    And pg_rewind is killed on mirror with content 0,1
+    And the user asynchronously sets up to end gprecoverseg process with SIGHUP
+    And the gprecoverseg lock directory is removed
+    And verify that mirror on content 0,1 is down
+    And the user runs "gprecoverseg -a"
+    And gprecoverseg should return a return code of 0
+    And an FTS probe is triggered
+    And the user waits until mirror on content 0,1,2 is up
+    And the cluster is rebalanced
+
+  @concourse_cluster
+  Scenario: gprecoverseg -i gives warning if pg_rewind already running for all of the failed segments
+    Given the database is running
+    And all the segments are running
+    And the segments are synchronized
+    And all files in gpAdminLogs directory are deleted on all hosts in the cluster
+    And user immediately stops all primary processes for content 0,1,2,3
+    And user can start transactions
+    And the environment variable "SUSPEND_PG_REWIND" is set to "600"
+    And the user asynchronously runs "gprecoverseg -a" and the process is saved
+    And the user just waits until recovery_progress.file is created in gpAdminLogs
+    And verify that mirror on content 0,1,2,3 is down
+    And the gprecoverseg lock directory is removed
+    And an FTS probe is triggered
+    And user can start transactions
+    Given a gprecoverseg directory under '/tmp' with mode '0700' is created
+    And a gprecoverseg input file is created
+    And edit the input file to recover mirror with content 0 full inplace
+    And edit the input file to recover mirror with content 1 full inplace
+    And edit the input file to recover mirror with content 2 incremental
+    And edit the input file to recover mirror with content 3 incremental
+    When the user runs gprecoverseg with input file and additional args "-a"
+    Then gprecoverseg should return a return code of 0
+    And gprecoverseg should print "Found pg_rewind running for segments with contentIds [0, 1, 2, 3], skipping recovery of these segments" to logfile
+    And verify that mirror on content 0,1,2,3 is down
+    And pg_rewind is killed on mirror with content 0,1,2,3
+    And the user asynchronously sets up to end gprecoverseg process with SIGHUP
+    And the gprecoverseg lock directory is removed
+    And verify that mirror on content 0,1,2,3 is down
+    Then "SUSPEND_PG_REWIND" environment variable should be restored
+    And the user runs "gprecoverseg -a"
+    And gprecoverseg should return a return code of 0
+    And an FTS probe is triggered
+    And the user waits until mirror on content 0,1,2,3 is up
+    And the cluster is rebalanced
+    And all files in gpAdminLogs directory are deleted on all hosts in the cluster
 
   @demo_cluster
   @concourse_cluster

@@ -116,7 +116,7 @@ The [gp\_resource\_group\_cpu\_limit](../ref_guide/config_params/guc-list.html) 
 
 > **Note** The default `gp_resource_group_cpu_limit` value may not leave sufficient CPU resources if you are running other workloads on your Greenplum Database cluster nodes, so be sure to adjust this server configuration parameter accordingly.
 
-**Warning:** Avoid setting `gp_resource_group_cpu_limit` to a value higher than .9. Doing so may result in high workload queries taking near all CPU resources, potentially starving Greenplum Database auxiliary processes.
+> **Caution** Avoid setting `gp_resource_group_cpu_limit` to a value higher than .9. Doing so may result in high workload queries taking near all CPU resources, potentially starving Greenplum Database auxiliary processes.
 
 ### <a id="cpuset"></a>Assigning CPU Resources by Core 
 
@@ -164,6 +164,8 @@ This mode is active when `gp_resource_group_cpu_ceiling_enforcement` is set to `
 This mode is active when `gp_resource_group_cpu_ceiling_enforcement` is set to `true`. The resource group is enforced to not use more CPU resources than the defined value `CPU_RATE_LIMIT`, avoiding the use of the CPU burst feature.
 
 ## <a id="topic8339717"></a>Memory Limits 
+
+> **Caution** Beginning in version 6.21.0, the Resource Groups implementation was changed to calculate segment memory using `gp_segment_configuration.hostname` instead of `gp_segment_configuration.address`. This implementation can result in a lower memory limit value compared to the earlier code, for deployments where each host uses multiple IP addresses.  In some cases, this change in behavior could lead to Out Of Memory errors when upgrading from an earlier version. Version 6.23.4 introduces a configuration parameter, `gp_count_host_segments_using_address`, that can be enabled to calculate of segment memory using `gp_segment_configuration.address` if Out Of Memory errors are encountered after an upgrade. This parameter is disabled by default. This parameter will not be provided in Greenplum Version 7 because resource group memory calculation will no longer be dependent on the segments per host value.
 
 When resource groups are enabled, memory usage is managed at the Greenplum Database node, segment, and resource group levels. You can also manage memory at the transaction level with a resource group for roles.
 

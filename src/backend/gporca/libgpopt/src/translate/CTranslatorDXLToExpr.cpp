@@ -2143,6 +2143,18 @@ CTranslatorDXLToExpr::Ptabdesc(CDXLTableDescr *table_descr)
 		{
 			const IMDColumn *pmdcol = pmdrel->PartColAt(ul);
 			INT attrnum = pmdcol->AttrNum();
+			if (pmdcol->IsDropped())
+			{
+				// ORCA assumes that if a table is partitioned, it always has partition key column/s.
+				// This assumption holds as GPDB doesn't allow dropping partition key via direct drop.
+				// But, if a partition key column is a user type which is dropped using DROP TYPE..CASCADE
+				// the partition key column is also dropped.
+				// This will break the underlying assumption in ORCA and may lead to crash.
+				// To avoid this, instead fallback to planner.
+				GPOS_RAISE(
+					gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+					GPOS_WSZ_LIT("Table with dropped partition key column."));
+			}
 			ULONG *pulPos = phmiulAttnoColMapping->Find(&attrnum);
 			GPOS_ASSERT(NULL != pulPos);
 			ptabdesc->AddPartitionColumn(*pulPos);
@@ -2890,7 +2902,8 @@ CTranslatorDXLToExpr::PexprScalarFunc(const CDXLNode *pdxlnFunc)
 		pop = GPOS_NEW(m_mp) CScalarFunc(
 			m_mp, mdid_func, mdid_return_type, pdxlopFuncExpr->TypeModifier(),
 			GPOS_NEW(m_mp) CWStringConst(
-				m_mp, (pmdfunc->Mdname().GetMDName())->GetBuffer()));
+				m_mp, (pmdfunc->Mdname().GetMDName())->GetBuffer()),
+			pdxlopFuncExpr->IsFuncVariadic());
 	}
 
 	CExpression *pexprFunc = NULL;

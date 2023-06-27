@@ -27,7 +27,7 @@ from os import path
 
 from gppylib.gparray import GpArray, ROLE_PRIMARY, ROLE_MIRROR
 from gppylib.commands.gp import SegmentStart, GpStandbyStart, MasterStop
-from gppylib.commands import gp
+from gppylib.commands import gp, unix
 from gppylib.commands.pg import PgBaseBackup
 from gppylib.commands.unix import findCmdInPath, Scp
 from gppylib.operations.startSegments import MIRROR_MODE_MIRRORLESS
@@ -357,7 +357,7 @@ def impl(context, env_var):
     if env_var in os.environ:
         del os.environ[env_var]
 
-@then('{env_var} environment variable should be restored')
+@then('"{env_var}" environment variable should be restored')
 def impl(context, env_var):
     if not hasattr(context, 'orig_env'):
         raise Exception('%s can not be reset' % env_var)
@@ -365,7 +365,10 @@ def impl(context, env_var):
     if env_var not in context.orig_env:
         raise Exception('%s can not be reset.' % env_var)
 
-    os.environ[env_var] = context.orig_env[env_var]
+    if context.orig_env[env_var] is None:
+        del os.environ[env_var]
+    else:
+        os.environ[env_var] = context.orig_env[env_var]
 
     del context.orig_env[env_var]
 
@@ -637,6 +640,15 @@ def impl(context, kill_process_name, log_msg, logfile_name):
 def impl(context, process_name):
     command = "ps ux | grep bin/%s | awk '{print $2}' | xargs kill -2" % (process_name)
     run_async_command(context, command)
+
+
+@given('the user asynchronously sets up to end {process_name} process with SIGHUP')
+@when('the user asynchronously sets up to end {process_name} process with SIGHUP')
+@then('the user asynchronously sets up to end {process_name} process with SIGHUP')
+def impl(context, process_name):
+    command = "ps ux | grep bin/%s | awk '{print $2}' | xargs kill -9" % (process_name)
+    run_async_command(context, command)
+
 
 @when('the user asynchronously sets up to end gpcreateseg process when it starts')
 def impl(context):
@@ -1403,7 +1415,10 @@ def impl(context):
 
 @given('the environment variable "{var}" is set to "{val}"')
 def impl(context, var, val):
-    context.env_var = os.environ.get(var)
+    if not hasattr(context, 'orig_env'):
+        context.orig_env = dict()
+
+    context.orig_env[var] = os.environ.get(var)
     os.environ[var] = val
 
 
@@ -1540,7 +1555,9 @@ def impl(context, when):
     context.saved_array[when] = GpArray.initFromCatalog(dbconn.DbURL())
 
 
+@given('we run a sample background script to generate a pid on "{seg}" segment')
 @when('we run a sample background script to generate a pid on "{seg}" segment')
+@then('we run a sample background script to generate a pid on "{seg}" segment')
 def impl(context, seg):
     if seg == "primary":
         if not hasattr(context, 'pseg_hostname'):
@@ -1550,6 +1567,8 @@ def impl(context, seg):
         if not hasattr(context, 'standby_host'):
             raise Exception("Standby host is not saved in the context")
         hostname = context.standby_host
+    elif seg == "master":
+        hostname = get_master_hostname()[0][0]
 
     filename = os.path.join(os.getcwd(), './test/behave/mgmt_utils/steps/data/pid_background_script.py')
 
@@ -1561,11 +1580,11 @@ def impl(context, seg):
     cmd.run(validateAfter=True)
 
     cmd = Command(name="Run Bg process to save pid",
-                  cmdStr='sh -c "python /tmp/pid_background_script.py" &>/dev/null &', remoteHost=hostname, ctxt=REMOTE)
+                  cmdStr='sh -c "python /tmp/pid_background_script.py /tmp/bgpid" &>/dev/null &', remoteHost=hostname, ctxt=REMOTE)
     cmd.run(validateAfter=True)
 
-    cmd = Command(name="get bg pid", cmdStr="ps ux | grep pid_background_script.py | grep -v grep | awk '{print \$2}'",
-                  remoteHost=hostname, ctxt=REMOTE)
+    cmd = Command(name="get Bg process PID",
+                  cmdStr='sleep 1; until [ -f /tmp/bgpid ]; do sleep 1; done; cat /tmp/bgpid', remoteHost=hostname, ctxt=REMOTE)
     cmd.run(validateAfter=True)
     context.bg_pid = cmd.get_stdout()
     if not context.bg_pid:
@@ -1584,6 +1603,8 @@ def impl(context, seg):
         if not hasattr(context, 'standby_host'):
             raise Exception("Standby host is not saved in the context")
         hostname = context.standby_host
+    elif seg == "master":
+        hostname = get_master_hostname()[0][0]
 
     cmd = Command(name="get bg pid", cmdStr="ps ux | grep pid_background_script.py | grep -v grep | awk '{print \$2}'",
                   remoteHost=hostname, ctxt=REMOTE)
@@ -1591,6 +1612,21 @@ def impl(context, seg):
     pids = cmd.get_stdout().splitlines()
     for pid in pids:
         cmd = Command(name="killbg pid", cmdStr='kill -9 %s' % pid, remoteHost=hostname, ctxt=REMOTE)
+        cmd.run(validateAfter=True)
+
+
+@when('{process} is killed on mirror with content {contentids}')
+@then('{process} is killed on mirror with content {contentids}')
+def impl(context, process, contentids):
+    segments = GpArray.initFromCatalog(dbconn.DbURL()).getDbList()
+    content_ids = [int(i) for i in contentids.split(',')]
+    hosts = set()
+    for seg in segments:
+        if seg.content in content_ids and seg.role == 'm':
+            hosts.add(seg.getSegmentHostName())
+
+    for host in hosts:
+        cmd = Command(name="kill process {}".format(process), cmdStr="pkill -9 {}".format(process), remoteHost=host, ctxt=REMOTE)
         cmd.run(validateAfter=True)
 
 
@@ -2174,6 +2210,22 @@ def impl(context, table, dbname, segid):
     # Yes, the below line is ugly.  It looks much uglier when done with separate strings, given the multiple levels of escaping required.
     remote_cmd = """
 ssh %s "source %s; export PGUSER=%s; export PGPORT=%s; export PGOPTIONS=\\\"-c gp_session_role=utility\\\"; psql -d %s -c \\\"SET allow_system_table_mods=true; DELETE FROM pg_attribute where attrelid=\'%s\'::regclass::oid;\\\""
+""" % (host, source_file, user, port, dbname, table)
+    run_command(context, remote_cmd.strip())
+
+@when('a table "{table}" in database "{dbname}" has its relnatts inflated on segment with content id "{segid}"')
+def impl(context, table, dbname, segid):
+    local_cmd = 'psql %s -t -c "SELECT port,hostname FROM gp_segment_configuration WHERE content=%s and role=\'p\';"' % (
+        dbname, segid)
+    run_command(context, local_cmd)
+    port, host = context.stdout_message.split("|")
+    port = port.strip()
+    host = host.strip()
+    user = os.environ.get('USER')
+    source_file = os.path.join(os.environ.get('GPHOME'), 'greenplum_path.sh')
+    # Yes, the below line is ugly.  It looks much uglier when done with separate strings, given the multiple levels of escaping required.
+    remote_cmd = """
+ssh %s "source %s; export PGUSER=%s; export PGPORT=%s; export PGOPTIONS=\\\"-c gp_session_role=utility\\\"; psql -d %s -c \\\"SET allow_system_table_mods=true; UPDATE pg_class SET relnatts=relnatts + 2 WHERE relname=\'%s\';\\\""
 """ % (host, source_file, user, port, dbname, table)
     run_command(context, remote_cmd.strip())
 
@@ -3993,3 +4045,44 @@ def impl(context):
 def impl(context):
      cmd = Command(name='create input host file', cmdStr='echo sdw1 > /tmp/hostfile1;echo cdw >> /tmp/hostfile1;')
      cmd.run(validateAfter=True)
+
+
+@given('running postgres processes are saved in context')
+@when('running postgres processes are saved in context')
+@then('running postgres processes are saved in context')
+def impl(context):
+
+    # Store the pids in a dictionary where key will be the hostname and the
+    # value will be the pids of all the postgres processes running on that host
+    host_to_pid_map = dict()
+    segs = GpArray.initFromCatalog(dbconn.DbURL()).getDbList()
+    for seg in segs:
+        pids = gp.get_postgres_segment_processes(seg.datadir, seg.hostname)
+        if seg.hostname not in host_to_pid_map:
+            host_to_pid_map[seg.hostname] = pids
+        else:
+            host_to_pid_map[seg.hostname].extend(pids)
+
+    context.host_to_pid_map = host_to_pid_map
+
+
+@given('verify no postgres process is running on all hosts')
+@when('verify no postgres process is running on all hosts')
+@then('verify no postgres process is running on all hosts')
+def impl(context):
+    host_to_pid_map = context.host_to_pid_map
+
+    for host in host_to_pid_map:
+        for pid in host_to_pid_map[host]:
+            if unix.check_pid_on_remotehost(pid, host):
+                raise Exception("Postgres process {0} not killed on {1}.".format(pid, host))
+
+
+@then( 'verify if the gprecoverseg.lock directory is present in master_data_directory')
+def impl(context):
+    gprecoverseg_lock_file = "%s/gprecoverseg.lock" % gp.get_masterdatadir()
+    if not os.path.exists(gprecoverseg_lock_file):
+        raise Exception('gprecoverseg.lock directory does not exist')
+    else:
+        return
+

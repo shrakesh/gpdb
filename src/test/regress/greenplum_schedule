@@ -75,9 +75,7 @@ test: gp_connections
 
 # bitmap_index triggers recovery, run it seperately
 test: bitmap_index
-# 'analyze' utilizes fault injectors so it needs to be in a group by itself
-test: analyze
-test: gp_dump_query_oids gp_owner_permission incremental_analyze
+test: gp_dump_query_oids analyze gp_owner_permission incremental_analyze
 test: indexjoin as_alias regex_gp gpparams with_clause transient_types gp_rules dispatch_encoding motion_gp
 # dispatch should always run seperately from other cases.
 test: dispatch
@@ -163,7 +161,7 @@ test: gp_toolkit_ao_funcs trig auth_constraint role portals_updatable plpgsql_ca
 test: rle rle_delta dsp not_out_of_shmem_exit_slots
 
 # direct dispatch tests
-test: direct_dispatch bfv_dd bfv_dd_multicolumn bfv_dd_types
+test: direct_dispatch bfv_dd bfv_dd_multicolumn bfv_dd_types interrupt_holdoff_count
 
 # catalog test uses pg_get_constraintdef which may report ERROR when executed
 # concurrently with other tests. Cause pg_get_constraintdef() looks up
@@ -195,7 +193,7 @@ test: rpt rpt_joins rpt_tpch rpt_returning
 # temp tables
 test: bfv_cte bfv_joins bfv_planner bfv_subquery bfv_legacy bfv_temp bfv_dml
 
-test: qp_olap_mdqa qp_misc gp_recursive_cte qp_dml_joins qp_dml_oids trigger_sets_oid qp_skew
+test: qp_olap_mdqa qp_misc gp_recursive_cte qp_dml_joins qp_dml_oids trigger_sets_oid qp_skew qp_select
 
 test: qp_misc_jiras qp_with_clause qp_executor qp_olap_windowerr qp_olap_window qp_derived_table qp_bitmapscan qp_dropped_cols
 test: qp_with_functional_inlining qp_with_functional_noinlining

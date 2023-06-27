@@ -58,7 +58,8 @@ CorrelatedLeftSemiNLJoinWithLimit PushFilterToSemiJoinLeftChild SubqOuterReferen
 CAntiSemiJoinTest:
 AntiSemiJoin2Select-1 AntiSemiJoin2Select-2 NOT-IN-NotNullBoth NOT-IN-NullInner NOT-IN-NullOuter
 Correlated-AntiSemiJoin CorrelatedAntiSemiJoin-True Correlated-LASJ-With-Outer-Col NotInToLASJ
-Correlated-LASJ-With-Outer-Const Correlated-LASJ-With-Outer-Expr LeftOuter2InnerUnionAllAntiSemiJoin-Tpcds;
+Correlated-LASJ-With-Outer-Const Correlated-LASJ-With-Outer-Expr LeftOuter2InnerUnionAllAntiSemiJoin-Tpcds
+LASJ-Not-In-Force-Broadcast;
 
 CPredicateTest:
 ConvertBoolConstNullToConstTableFalseFilter 
@@ -153,18 +154,22 @@ StatsFilter-AnyWithNewColStats EquiJoinOnExpr-Supported EquiJoinOnExpr-Unsupport
 
 CICGMiscTest:
 BroadcastSkewedHashjoin OrderByNullsFirst ConvertHashToRandomSelect ConvertHashToRandomInsert HJN-DeeperOuter CTAS CTAS-Random CheckAsUser
-CTAS-random-distributed-from-replicated-distributed-table
 ProjectRepeatedColumn1 ProjectRepeatedColumn2 NLJ-BC-Outer-Spool-Inner Self-Comparison Self-Comparison-Nullable
 SelectCheckConstraint ExpandJoinOrder SelectOnBpchar EqualityJoin EffectsOfJoinFilter InnerJoin-With-OuterRefs
 UDA-AnyElement-1 UDA-AnyElement-2 Project-With-NonScalar-Func SixWayDPv2 Join-Varchar-Equality NLJ-Rewindability
-NLJ-Rewindability-CTAS DisableBroadcastThreshold;
+NLJ-Rewindability-CTAS DisableBroadcastThreshold VariadicFlagWithJson VariadicFlagWithFormatQuery VariadicFlagWithUnionAll;
 
 CJoinPredTest:
 MultipleDampedPredJoinCardinality MultipleIndependentPredJoinCardinality MultiDistKeyJoinCardinality
 MultiDistKeyWithOtherPredsJoinCardinality NoDistKeyMultiPredJoinCardinality OneDistKeyMultiPredJoinCardinality
 JoinOnViewWithCastedColumn JoinOnViewWithCastedColumnAndSubqueryInPredicate JoinOnViewWithVolatileColumn
 JoinOnViewWithMixOfPushableAndNonpushablePredicates JoinOnViewWithSetReturningColumn OuterJoinOnViewWithCastedColumn JoinWithSubqueryProjectColumn
-AggSubqCollapseFalseFilter NestedJoinWithCastedColumn;
+AggSubqCollapseFalseFilter NestedJoinWithCastedColumn PushConstantSelectPredicateThruJoin-1 PushConstantSelectPredicateThruJoin-2
+PushConstantSelectPredicateThruJoin-3 PushConstantSelectPredicateThruJoin-4 PushConstantSelectPredicateThruJoin-5 PushConstantSelectPredicateThruJoin-6
+PushConstantSelectPredicateThruJoin-7 PushConstantSelectPredicateThruJoin-8 PushConstantSelectPredicateThruJoin-9 PushConstantSelectPredicateThruJoin-10
+PushConstantSelectPredicateThruJoin-11 PushConstantSelectPredicateThruJoin-12 PushConstantSelectPredicateThruJoin-13
+PushConstantSelectPredicateThruJoin-14 PushConstantSelectPredicateThruJoin-15 PushConstantSelectPredicateThruJoin-16
+PushConstantSelectPredicateThruJoin-17;
 
 CArrayCmpTest:
 ArrayConcat ArrayRef FoldedArrayCmp IN-ArrayCmp NOT-IN-ArrayCmp ArrayCmpAll
@@ -270,7 +275,8 @@ LeftJoinNullsNotColocated InnerJoinBroadcastTableHashSpec LeftJoinBroadcastTable
 COuterJoin2Test:
 LOJ-IsNullPred Select-Proj-OuterJoin OuterJoin-With-OuterRefs Join-Disj-Subqs
 EffectOfLocalPredOnJoin EffectOfLocalPredOnJoin2 EffectOfLocalPredOnJoin3
-LeftJoin-UnsupportedFilter-Cardinality LeftOuter2InnerUnionAllAntiSemiJoin;
+LeftJoin-UnsupportedFilter-Cardinality LeftOuter2InnerUnionAllAntiSemiJoin
+LOJ-With-Single-Pred-On-Outer LOJ_NULLTEST-On-SelfCheck-Pred;
 
 COuterJoin3Test:
 LOJ_IDF_no_convert_outer_ref_predicate_with_NULL
@@ -310,7 +316,7 @@ SpoolShouldInvalidateUnresolvedDynamicScans DiscardRedistributeHashJoin;
 CRandomDataInsertionTest:
 AddRedistributeBeforeInsert-1 AddRedistributeBeforeInsert-2 AddRedistributeBeforeInsert-3
 AddRedistributeBeforeInsert-4 AddRedistributeBeforeInsert-5 DontAddRedistributeBeforeInsert-1
-DontAddRedistributeBeforeInsert-2;
+DontAddRedistributeBeforeInsert-2 CTAS-random-distr CTAS-random-distributed-from-replicated-distributed-table;
 
 CGistIndexTest:
 Gist-AOCOTable-NonLossy-BitmapIndexPlan Gist-NonPart-Lossy-BitmapIndexPlan Gist-NonPart-Lossy-IndexPlan
@@ -334,7 +340,7 @@ InsertNonSingleton NonSingleton TaintedReplicatedAgg TaintedReplicatedWindowAgg 
 InsertReplicatedIntoSerialHashDistributedTable TaintedReplicatedTablesCTE ReplicatedTableWithAggNoMotion;
 
 CDqaTest:
-NonSplittableAgg DqaHavingMax DqaMax DqaMin DqaSubqueryMax DqaNoRedistribute DqaAddRef;
+NonSplittableAgg DqaHavingMax DqaMax DqaMin DqaSubqueryMax DqaNoRedistribute DqaAddRef DistinctQueryWithMotions;
 
 CMCVCardinalityTest:
 BpCharMCVCardinalityEquals BpCharMCVCardinalityGreaterThan

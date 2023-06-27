@@ -1021,6 +1021,8 @@ public:
 						 CExpressionArrays *input_exprs);
 
 	static BOOL FScalarConstBoolNull(CExpression *pexpr);
+
+	static BOOL FScalarConstOrBinaryCoercible(CExpression *pexpr);
 };	// class CUtils
 
 // hash set from expressions
