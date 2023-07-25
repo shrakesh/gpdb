@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 
 import os
+import sys
+import datetime
 import signal
 from contextlib import closing
 
 from gppylib.recoveryinfo import RecoveryErrorType
 from gppylib.commands.pg import PgBaseBackup, PgRewind, PgReplicationSlot
-from gppylib.commands.unix import Rsync
+from gppylib.commands.unix import RsyncFromFileList,Rsync,RemoveFile
 from recovery_base import RecoveryBase, set_recovery_cmd_results
-from gppylib.commands.base import Command, LOCAL
+from gppylib.commands.base import Command, LOCAL, REMOTE
 from gppylib.commands.gp import SegmentStart
 from gppylib.gparray import Segment
 from gppylib.commands.gp import ModifyConfSetting
@@ -132,8 +134,8 @@ class DifferentialRecovery(Command):
         """ Write the postresql.auto.conf and internal.auto.conf files """
         self.write_conf_files()
 
-        """ sync pg_wal directory and pg_control file just before starting the segment """
-        self.sync_wals_and_control_file()
+        """ sync pg_wal directory just before starting the segment """
+        self.sync_wal_files()
 
         self.logger.info(
             "Successfully ran differential recovery for dbid {}".format(self.recovery_info.target_segment_dbid))
@@ -169,6 +171,7 @@ class DifferentialRecovery(Command):
             4. In future we will have to add backup_label in rsync_exclude_list if pg_start_backup needs be started in
                non-exclusive mode for differential recovery.
         """
+
         rsync_exclude_list = {
             "/log",  # logs are segment specific so it can be skipped
             "pgsql_tmp",
@@ -186,8 +189,10 @@ class DifferentialRecovery(Command):
             "pg_subtrans/*",
             "pg_tblspc/*",  # excluding as the tablespace is handled in sync_tablespaces()
             "backups/*",
+            "pg_wal/*",    # exclude pg_wal as it will be taken care in later stage.
             "/db_dumps",  # as we exclude during pg_basebackup
             "/promote",  # as we exclude during pg_basebackup
+            "/db_analyze",  # updated as per pg_basebackup
         }
 
         log_directory_sql = """
@@ -232,8 +237,69 @@ class DifferentialRecovery(Command):
         cmd = Rsync(name="Sync pg data_dir", srcFile=os.path.join(self.recovery_info.source_datadir, ""),
                     dstFile=self.recovery_info.target_datadir,
                     srcHost=self.recovery_info.source_hostname, exclude_list=rsync_exclude_list,
-                    delete=True, checksum=True, progress=True, progress_file=self.recovery_info.progress_file)
+                    delete=True, checksum=False, progress=True, progress_file=self.recovery_info.progress_file)
         cmd.run(validateAfter=True)
+
+        self.sync_updated_files(exclude_list=rsync_exclude_list)
+
+
+    def sync_updated_files(self, srcPath = None, dstPath = None, exclude_list = None):
+        """
+            to sync the files which is updated after the primary was down, those files will be entitled for checksum
+            based rsync.
+
+            :param srcPath: location to the source data/tablespace directory.
+            :param dstPath: location to the target data/tablespace directory
+            :param exclude_list: list of excluded files for recoverseg rsync.
+        """
+
+        self.logger.debug('Syncing Updated files of dbid {}'.format(self.recovery_info.target_segment_dbid))
+
+        if srcPath is None:
+            srcPath = self.recovery_info.source_datadir
+        if dstPath is None:
+            dstPath = self.recovery_info.target_datadir
+        if exclude_list is None:
+            exclude_list = []
+
+        # source files is on primary we need to run the remote query to get the list of updated files.
+        cmdStr = "find {} -type f -newermt '{}'".format(srcPath, self.recovery_info.down_time)
+        cmd = Command('List files modified after timestamp', cmdStr=cmdStr,
+                      ctxt=REMOTE, remoteHost=self.recovery_info.source_hostname)
+        cmd.run(validateAfter=True)
+
+        modified_files = []
+        filter_files = []
+        for file_path in cmd.get_stdout().splitlines():
+            # Get the relative path by removing the base path
+            modified_file = os.path.relpath(file_path, srcPath)
+            # Append the relative path to the list
+            modified_files.append(modified_file)
+
+        sync_list_file = os.path.join("/tmp/gpdb.{}.synclist".format(self.recovery_info.target_segment_dbid))
+        with open(sync_list_file, 'wt') as file:
+            for item in modified_files:
+                # rsync to work with exclude option it should have the file to be listed in the transferred files.
+                # but with filtered file list there are chances that the file/directory listed in exclude list
+                # not present in the to be transferred  file list. so filtering out the exclude list here.
+                if any(s.split("/")[0] == item.split("/")[0] for s in exclude_list):
+                    continue
+                file.write(str(item) + '\n')
+                filter_files.append(item)
+
+        self.logger.debug('List of modified files : {}'.format(filter_files))
+
+        cmd = Rsync(name="Sync updated files", srcFile=os.path.join(srcPath, ""),
+                    dstFile=dstPath,
+                    srcHost=self.recovery_info.source_hostname,
+                    files_from=sync_list_file,
+                    recursive=True, # with --files-from option -r  option we need to provide explicitly
+                    checksum=True, progress=True,
+                    progress_file=self.recovery_info.progress_file)
+
+        cmd.run(validateAfter=True)
+        RemoveFile("remove temp sync file list", sync_list_file).run()
+
 
     def pg_start_backup(self):
         sql = "SELECT pg_start_backup('differential_backup');"
@@ -273,7 +339,7 @@ class DifferentialRecovery(Command):
         self.logger.debug("Running pg_basebackup to only write configuration files")
         cmd.run(validateAfter=True)
 
-    def sync_wals_and_control_file(self):
+    def sync_wal_files(self):
         self.logger.debug("Syncing pg_wal directory of dbid {}".format(self.recovery_info.target_segment_dbid))
         # os.path.join(dir, "") will append a '/' at the end of dir. When using "/" at the end of source,
         # rsync will copy the content of the last directory. When not using "/" at the end of source, rsync
@@ -282,14 +348,6 @@ class DifferentialRecovery(Command):
                     dstFile=os.path.join(self.recovery_info.target_datadir, "pg_wal", ""), progress=True, checksum=True,
                     srcHost=self.recovery_info.source_hostname,
                     progress_file=self.recovery_info.progress_file)
-        cmd.run(validateAfter=True)
-
-        self.logger.debug("Syncing pg_control file of dbid {}".format(self.recovery_info.target_segment_dbid))
-        cmd = Rsync(name="Sync pg_control file",
-                    srcFile=os.path.join(self.recovery_info.source_datadir, "global", "pg_control"),
-                    dstFile=os.path.join(self.recovery_info.target_datadir, "global", "pg_control"), progress=True,
-                    checksum=True,
-                    srcHost=self.recovery_info.source_hostname, progress_file=self.recovery_info.progress_file)
         cmd.run(validateAfter=True)
 
 
@@ -335,6 +393,9 @@ class DifferentialRecovery(Command):
                             checksum=True,
                             progress_file=self.recovery_info.progress_file)
                 cmd.run(validateAfter=True)
+
+                #sync files which has update when primary got down.
+                self.sync_updated_files(srcPath=os.path.join(srcPath, ""), dstPath=targetPath)
 
             # create tablespace symlink for target data directory.
             os.symlink(targetPath, targetOidPath)

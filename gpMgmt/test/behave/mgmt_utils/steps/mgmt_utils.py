@@ -4131,7 +4131,7 @@ cat >/usr/local/bin/rsync <<EOL
 arguments="\$@"
 
 # Insert data into table and run checkpoint just before syncing pg_control
-if [[ "\$arguments" == *"pg_wal"* ]]
+if [[ "\$arguments" == *"pg_wal"* && "\$arguments" != *"--exclude"* ]]
 then
     ssh cdw "psql -c 'INSERT INTO test_recoverseg SELECT generate_series(1, 1000)' -d postgres -p 5432 -h cdw"
 

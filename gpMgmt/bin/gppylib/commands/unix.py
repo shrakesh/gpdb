@@ -492,8 +492,9 @@ def canonicalize(addr):
 class Rsync(Command):
     def __init__(self, name, srcFile, dstFile, srcHost=None, dstHost=None, recursive=False,
                  verbose=True, archive_mode=True, checksum=False, delete=False, progress=False,
-                 stats=False, dry_run=False, bwlimit=None, exclude_list={}, ctxt=LOCAL,
-                 remoteHost=None, compress=False, progress_file=None, ignore_times=False, whole_file=False):
+                 stats=False, dry_run=False, bwlimit=None, exclude_list=[], ctxt=LOCAL,
+                 ignore_times=False, whole_file=False,remoteHost=None, compress=False,
+                 progress_file=None, files_from = None):
 
         """
             rsync options:
@@ -557,6 +558,10 @@ class Rsync(Command):
 
         if compress:
             cmd_tokens.append('--compress')
+
+        if files_from is not None:
+            filestr = "--files-from={}".format(files_from)
+            cmd_tokens.append(filestr)
 
         if srcHost:
             cmd_tokens.append(canonicalize(srcHost) + ":" + srcFile)

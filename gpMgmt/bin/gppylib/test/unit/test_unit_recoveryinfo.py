@@ -29,7 +29,8 @@ class BuildRecoveryInfoTestCase(GpTestCase):
 
         self.apply_patches([
             patch('recoveryinfo.gplog.get_logger_dir', return_value='/tmp/logdir'),
-            patch('recoveryinfo.datetime.datetime')
+            patch('recoveryinfo.datetime.datetime'),
+            patch('gppylib.recoveryinfo.get_target_down_time', return_value='2023-09-04 12:44:39')
         ])
         self.mock_logdir = self.get_mock_from_apply_patch('get_logger_dir')
 
@@ -47,38 +48,38 @@ class BuildRecoveryInfoTestCase(GpTestCase):
                                      GpMirrorToBuild(self.m4, self.p4, None, False, False),
                                      GpMirrorToBuild(self.m3, self.p3, None, False, True)],
                 "expected": {'sdw3': [RecoveryInfo('/data/mirror3', 7000, 7, 'sdw2', 3000, '/data/primary3',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid7.out'),
+                                                    True, False, None, '/tmp/logdir/pg_basebackup.111.dbid7.out'),
                                       RecoveryInfo('/data/mirror4', 8000, 8, 'sdw3', 4000, '/data/primary4',
-                                                    False, False, '/tmp/logdir/pg_rewind.111.dbid8.out'),
+                                                    False, False, None, '/tmp/logdir/pg_rewind.111.dbid8.out'),
                                       RecoveryInfo('/data/mirror3', 7000, 7, 'sdw2', 3000, '/data/primary3',
-                                                    False, True, '/tmp/logdir/rsync.111.dbid7.out')]}
+                                                    False, True, '2023-09-04 12:44:39', '/tmp/logdir/rsync.111.dbid7.out')]}
             },
             {
                 "name": "single_target_hosts_suggest_full_and_incr_with_failover",
                 "mirrors_to_build": [GpMirrorToBuild(self.m1, self.p1, self.m5, True, False),
                                      GpMirrorToBuild(self.m2, self.p2, self.m6, False, False)],
                 "expected": {'sdw4': [RecoveryInfo('/data/mirror5', 9000, 5, 'sdw1', 1000, '/data/primary1',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid5.out'),
+                                                    True, False, None, '/tmp/logdir/pg_basebackup.111.dbid5.out'),
                                       RecoveryInfo('/data/mirror6', 10000, 6, 'sdw2', 2000, '/data/primary2',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid6.out')]}
+                                                    True, False,None, '/tmp/logdir/pg_basebackup.111.dbid6.out')]}
             },
             {
                 "name": "multiple_target_hosts_suggest_full",
                 "mirrors_to_build": [GpMirrorToBuild(self.m1, self.p1, None, True, False),
                                      GpMirrorToBuild(self.m2, self.p2, None, True, False)],
                 "expected": {'sdw2': [RecoveryInfo('/data/mirror1', 5000, 5, 'sdw1', 1000, '/data/primary1',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid5.out')],
+                                                    True, False, None, '/tmp/logdir/pg_basebackup.111.dbid5.out')],
                              'sdw1': [RecoveryInfo('/data/mirror2', 6000, 6, 'sdw2', 2000, '/data/primary2',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid6.out')]}
+                                                    True, False, None, '/tmp/logdir/pg_basebackup.111.dbid6.out')]}
             },
             {
                 "name": "multiple_target_hosts_suggest_differential",
                 "mirrors_to_build": [GpMirrorToBuild(self.m1, self.p1, None, False, True),
                                      GpMirrorToBuild(self.m2, self.p2, None, False, True)],
                 "expected": {'sdw2': [RecoveryInfo('/data/mirror1', 5000, 5, 'sdw1', 1000, '/data/primary1',
-                                                   False, True, '/tmp/logdir/rsync.111.dbid5.out')],
+                                                   False, True, '2023-09-04 12:44:39', '/tmp/logdir/rsync.111.dbid5.out')],
                              'sdw1': [RecoveryInfo('/data/mirror2', 6000, 6, 'sdw2', 2000, '/data/primary2',
-                                                   False, True, '/tmp/logdir/rsync.111.dbid6.out')]}
+                                                   False, True, '2023-09-04 12:44:39', '/tmp/logdir/rsync.111.dbid6.out')]}
             },
             {
                 "name": "multiple_target_hosts_suggest_full_and_incr_and_differential",
@@ -87,22 +88,22 @@ class BuildRecoveryInfoTestCase(GpTestCase):
                                      GpMirrorToBuild(self.m4, self.p4, None, True, False),
                                      GpMirrorToBuild(self.m2, self.p2, None, False, True)],
                 "expected": {'sdw2': [RecoveryInfo('/data/mirror1', 5000, 5, 'sdw1', 1000, '/data/primary1',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid5.out')],
+                                                    True, False, None, '/tmp/logdir/pg_basebackup.111.dbid5.out')],
                              'sdw3': [RecoveryInfo('/data/mirror3', 7000, 7, 'sdw2', 3000, '/data/primary3',
-                                                    False, False, '/tmp/logdir/pg_rewind.111.dbid7.out'),
+                                                    False, False,None, '/tmp/logdir/pg_rewind.111.dbid7.out'),
                                       RecoveryInfo('/data/mirror4', 8000, 8, 'sdw3', 4000, '/data/primary4',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid8.out')],
+                                                    True, False, None,'/tmp/logdir/pg_basebackup.111.dbid8.out')],
                              'sdw1': [RecoveryInfo('/data/mirror2', 6000, 6, 'sdw2', 2000, '/data/primary2',
-                                                   False, True, '/tmp/logdir/rsync.111.dbid6.out'),]}
+                                                   False, True,'2023-09-04 12:44:39', '/tmp/logdir/rsync.111.dbid6.out'),]}
             },
             {
                 "name": "multiple_target_hosts_suggest_incr_failover_same_as_failed",
                 "mirrors_to_build": [GpMirrorToBuild(self.m1, self.p1, self.m1, False, False),
                                      GpMirrorToBuild(self.m2, self.p2, self.m2, False, False)],
                 "expected": {'sdw2': [RecoveryInfo('/data/mirror1', 5000, 5, 'sdw1', 1000, '/data/primary1',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid5.out')],
+                                                    True, False, None,'/tmp/logdir/pg_basebackup.111.dbid5.out')],
                              'sdw1': [RecoveryInfo('/data/mirror2', 6000, 6, 'sdw2', 2000, '/data/primary2',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid6.out')]}
+                                                    True, False, None,'/tmp/logdir/pg_basebackup.111.dbid6.out')]}
             },
             {
                 "name": "multiple_target_hosts_suggest_full_failover_same_as_failed",
@@ -110,11 +111,11 @@ class BuildRecoveryInfoTestCase(GpTestCase):
                                      GpMirrorToBuild(self.m3, self.p3, self.m3, True, False),
                                      GpMirrorToBuild(self.m4, self.p4, None, True, False)],
                 "expected": {'sdw2': [RecoveryInfo('/data/mirror1', 5000, 5, 'sdw1', 1000, '/data/primary1',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid5.out')],
+                                                    True, False, None, '/tmp/logdir/pg_basebackup.111.dbid5.out')],
                              'sdw3': [RecoveryInfo('/data/mirror3', 7000, 7, 'sdw2', 3000, '/data/primary3',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid7.out'),
+                                                    True, False, None, '/tmp/logdir/pg_basebackup.111.dbid7.out'),
                                       RecoveryInfo('/data/mirror4', 8000, 8, 'sdw3', 4000, '/data/primary4',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid8.out')]}
+                                                    True, False, None, '/tmp/logdir/pg_basebackup.111.dbid8.out')]}
             },
             {
                 "name": "multiple_target_hosts_suggest_full_and_incr",
@@ -123,15 +124,15 @@ class BuildRecoveryInfoTestCase(GpTestCase):
                                      GpMirrorToBuild(self.m3, self.p3, self.m3, False, False),
                                      GpMirrorToBuild(self.m4, self.p4, self.m8, True, False)],
                 "expected": {'sdw4': [RecoveryInfo('/data/mirror5', 9000, 5, 'sdw1', 1000, '/data/primary1',
-                                                    True, False, '/tmp/logdir/pg_basebackup.111.dbid5.out'),
+                                                    True, False, None, '/tmp/logdir/pg_basebackup.111.dbid5.out'),
                                       ],
                              'sdw1': [RecoveryInfo('/data/mirror2', 6000, 6, 'sdw2', 2000, '/data/primary2',
-                                                    False, False, '/tmp/logdir/pg_rewind.111.dbid6.out'),
+                                                    False, False, None, '/tmp/logdir/pg_rewind.111.dbid6.out'),
                                       RecoveryInfo('/data/mirror8', 12000, 8,
-                                                    'sdw3', 4000, '/data/primary4', True, False,
+                                                    'sdw3', 4000, '/data/primary4', True, False, None,
                                                     '/tmp/logdir/pg_basebackup.111.dbid8.out')],
                              'sdw3': [RecoveryInfo('/data/mirror3', 7000, 7, 'sdw2', 3000, '/data/primary3',
-                                                     True, False, '/tmp/logdir/pg_basebackup.111.dbid7.out')]
+                                                     True, False, None, '/tmp/logdir/pg_basebackup.111.dbid7.out')]
                              }
             },
         ]

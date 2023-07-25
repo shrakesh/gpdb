@@ -3,7 +3,8 @@ import datetime
 import json
 
 from gppylib import gplog
-
+from contextlib import closing
+from gppylib.db import dbconn
 
 class RecoveryInfo(object):
     """
@@ -13,7 +14,7 @@ class RecoveryInfo(object):
     Note: we don't have target hostname, since an object of this class will be accessed by the target host directly
     """
     def __init__(self, target_datadir, target_port, target_segment_dbid, source_hostname, source_port,
-                 source_datadir, is_full_recovery, is_differential_recovery,  progress_file):
+                 source_datadir, is_full_recovery, is_differential_recovery, down_time, progress_file):
         self.target_datadir = target_datadir
         self.target_port = target_port
         self.target_segment_dbid = target_segment_dbid
@@ -26,6 +27,7 @@ class RecoveryInfo(object):
         self.source_datadir = source_datadir
         self.is_full_recovery = is_full_recovery
         self.is_differential_recovery = is_differential_recovery
+        self.down_time = down_time
         self.progress_file = progress_file
 
     def __str__(self):
@@ -34,6 +36,17 @@ class RecoveryInfo(object):
     def __eq__(self, cmp_recovery_info):
         return str(self) == str(cmp_recovery_info)
 
+def get_target_down_time(dbid, contentid):
+    sql = "SELECT to_char(time,'YYYY-MM-DD HH24:MI:SS') FROM gp_configuration_history where dbid = {0} and description" \
+          " like '%dbid {0} with contentid {1} to m, d%' order by time desc limit 1;".format(dbid,contentid)
+
+    try:
+        with closing(dbconn.connect(dbconn.DbURL())) as conn:
+            res = dbconn.querySingleton(conn, sql)
+    except Exception as e:
+        raise Exception("failed to query gp_configuration_history for segment down time: %s" % str(e))
+
+    return res
 
 def build_recovery_info(mirrors_to_build):
     """
@@ -65,11 +78,18 @@ def build_recovery_info(mirrors_to_build):
 
         hostname = target_segment.getSegmentHostName()
 
+        down_time = None
+        if to_recover.isDifferentialSynchronization():
+            down_time = get_target_down_time(target_segment.getSegmentDbId(),
+                                             target_segment.getSegmentContentId())
+
         recovery_info_by_host[hostname].append(RecoveryInfo(
             target_segment.getSegmentDataDirectory(), target_segment.getSegmentPort(),
             target_segment.getSegmentDbId(), source_segment.getSegmentHostName(),
-            source_segment.getSegmentPort(), source_segment.getSegmentDataDirectory(),
-            to_recover.isFullSynchronization(), to_recover.isDifferentialSynchronization(), progress_file))
+            source_segment.getSegmentPort(),
+            source_segment.getSegmentDataDirectory(),to_recover.isFullSynchronization(),
+            to_recover.isDifferentialSynchronization(),down_time, progress_file))
+
     return recovery_info_by_host
 
 
