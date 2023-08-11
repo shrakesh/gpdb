@@ -1,6 +1,6 @@
 import pipes
 import tempfile
-import time
+import os
 
 from behave import given, then
 
@@ -10,6 +10,7 @@ from gppylib.db import dbconn
 from gppylib.gparray import GpArray
 from test.behave_utils.utils import run_cmd,wait_for_database_dropped
 from gppylib.commands.base import Command, REMOTE
+from gppylib.commands.unix import get_remote_link_path
 
 class Tablespace:
     def __init__(self, name):
@@ -72,6 +73,36 @@ class Tablespace:
         if sorted(data) != sorted(self.initial_data):
             raise Exception("Tablespace data is not identically distributed. Expected:\n%r\n but found:\n%r" % (
                 sorted(self.initial_data), sorted(data)))
+
+        #verify symlink targets for tablespaces
+        self.verify_symlink(hostname, port)
+
+    def verify_symlink(self, hostname=None, port=0):
+
+        gparray = GpArray.initFromCatalog(dbconn.DbURL(hostname=hostname, port=port, dbname=self.dbname))
+        all_segments = gparray.getDbList()
+
+        # checking if tablespace is present or not, if tablespace is created then atleast
+        # one oid->tablespace_location symlink should be available
+        coordinator_tblspc_dir = gparray.coordinator.getSegmentTableSpaceDirectory()
+        if not os.listdir(coordinator_tblspc_dir):
+            return None #no table space is present
+
+        tblspc_oids = os.listdir(coordinator_tblspc_dir)
+
+        # keeping a list to check if any of the symlink has duplicate entry
+        tblspc = []
+        for seg in all_segments:
+            for tblspc_oid in tblspc_oids:
+                symlink_path = os.path.join(seg.getSegmentTableSpaceDirectory(), tblspc_oid)
+                target_path = get_remote_link_path(symlink_path, seg.getSegmentHostName())
+                segDbId = seg.getSegmentDbId()
+                #checking for duplicate and wrong symlink target
+                if target_path in tblspc or os.path.basename(target_path) != str(segDbId):
+                    raise Exception("tablespac has invalid/duplicate symlink for oid {0} in segment dbid {1}".\
+                        format(tblspc_oid,str(segDbId)))
+
+                tblspc.append(target_path)
 
     def verify_for_gpexpand(self, hostname=None, port=0):
         """

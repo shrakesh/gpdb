@@ -3,9 +3,9 @@ Feature: gprecoverseg tests
 
     Scenario Outline: <scenario> recovery works with tablespaces
         Given the database is running
-          And a tablespace is created with data
           And user stops all primary processes
           And user can start transactions
+          And a tablespace is created with data
          When the user runs "gprecoverseg <args>"
          Then gprecoverseg should return a return code of 0
           And the segments are synchronized
@@ -517,9 +517,9 @@ Feature: gprecoverseg tests
   @concourse_cluster
   Scenario Outline: <scenario> recovery works with tablespaces on a multi-host environment
     Given the database is running
-    And a tablespace is created with data
     And user stops all primary processes
     And user can start transactions
+    And a tablespace is created with data
     When the user runs "gprecoverseg <args>"
     Then gprecoverseg should return a return code of 0
     And the segments are synchronized
