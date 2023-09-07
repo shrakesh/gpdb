@@ -291,6 +291,19 @@ Feature: gprecoverseg tests
         And all the segments are running
         And the segments are synchronized
 
+    Scenario: gprecoverseg runs with given coordinator data directory option
+        Given the database is running
+          And all the segments are running
+          And the segments are synchronized
+          And user stops all mirror processes
+          And user can start transactions
+          And "COORDINATOR_DATA_DIRECTORY" environment variable is not set
+         Then the user runs utility "gprecoverseg" with coordinator data directory and "-F -a"
+          And gprecoverseg should return a return code of 0
+          And "COORDINATOR_DATA_DIRECTORY" environment variable should be restored
+          And all the segments are running
+          And the segments are synchronized
+
     Scenario: gprecoverseg differential recovery displays rsync progress to the user
         Given the database is running
         And all the segments are running

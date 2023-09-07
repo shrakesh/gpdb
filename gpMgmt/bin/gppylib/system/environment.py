@@ -29,7 +29,9 @@ class GpCoordinatorEnvironment:
         """
         if coordinatorDataDir is None:
             self.__coordinatorDataDir = gp.get_coordinatordatadir()
-        else: self.__coordinatorDataDir = coordinatorDataDir
+        else:
+            self.__coordinatorDataDir = coordinatorDataDir
+            gp.set_coordinatordatadir(coordinatorDataDir)
 
         logger.debug("Obtaining coordinator's port from coordinator data directory")
         pgconf_dict = pgconf.readfile(self.__coordinatorDataDir + "/postgresql.conf")

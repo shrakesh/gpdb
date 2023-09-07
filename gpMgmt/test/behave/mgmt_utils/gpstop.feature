@@ -12,6 +12,17 @@ Feature: gpstop behave tests
 
     @concourse_cluster
     @demo_cluster
+    Scenario: gpstop runs with given coordinator data directory option
+        Given the database is running
+          And running postgres processes are saved in context
+          And "COORDINATOR_DATA_DIRECTORY" environment variable is not set
+         Then the user runs utility "gpstop" with coordinator data directory and "-a"
+          And gpstop should return a return code of 0
+          And "COORDINATOR_DATA_DIRECTORY" environment variable should be restored
+          And verify no postgres process is running on all hosts
+
+    @concourse_cluster
+    @demo_cluster
     Scenario: when there are user connections gpstop waits to shutdown until user switches to fast mode
         Given the database is running
           And the user asynchronously runs "psql postgres" and the process is saved

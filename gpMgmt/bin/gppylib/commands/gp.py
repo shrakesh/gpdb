@@ -1190,16 +1190,30 @@ def get_gphome():
         raise GpError('Environment Variable GPHOME not set')
     return gphome
 
+'''
+gprecoverseg, gpstart, gpstate, gpstop, gpaddmirror  has option to give -d <datadirctory>
+but that is not getting followed throught the utility. to avoid that best possible way is 
+to set and retrieve that set coordinator dir when we call get_coordinatordatadir().
+'''
+option_coordinator_datadir = None
+def set_coordinatordatadir( coordinator_datadir=None):
+    global option_coordinator_datadir
+    option_coordinator_datadir = coordinator_datadir
 
 ######
 # Support both COORDINATOR_DATA_DIRECTORY and MASTER_DATA_DIRECTORY for backwards compatibility.
 # If both are set, the former is used and the latter is ignored.
 def get_coordinatordatadir():
-    coordinator_datadir = os.environ.get('COORDINATOR_DATA_DIRECTORY')
-    if not coordinator_datadir:
-        coordinator_datadir = os.environ.get('MASTER_DATA_DIRECTORY')
+    if option_coordinator_datadir is not None:
+        coordinator_datadir = option_coordinator_datadir
+    else:
+        coordinator_datadir = os.environ.get('COORDINATOR_DATA_DIRECTORY')
+        if not coordinator_datadir:
+            coordinator_datadir = os.environ.get('MASTER_DATA_DIRECTORY')
+
     if not coordinator_datadir:
         raise GpError("Environment Variable COORDINATOR_DATA_DIRECTORY not set!")
+
     return coordinator_datadir
 
 ######
