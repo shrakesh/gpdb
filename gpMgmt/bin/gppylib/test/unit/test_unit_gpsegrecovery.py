@@ -553,6 +553,17 @@ class DifferentialRecoveryClsTestCase(GpTestCase):
                           call('List of modified files : []')],
                          self.mock_logger.debug.call_args_list)
 
+    @patch('gppylib.commands.base.Command.run')
+    @patch('gppylib.commands.base.Command.get_stdout', return_value='')
+    def test_sync_sync_updated_files_success(self,mock1,mock2):
+        self.diff_recovery_cmd.sync_updated_files()
+        self.assertEqual(1, self.mock_rsync_init.call_count)
+        self.assertEqual(1, self.mock_rsync_run.call_count)
+        self.assertEqual(call(validateAfter=True), self.mock_rsync_run.call_args)
+        self.assertEqual([call('Syncing Updated files of dbid 2'),
+                          call('List of modified files : []')],
+                         self.mock_logger.debug.call_args_list)
+
     def tearDown(self):
         super(DifferentialRecoveryClsTestCase, self).tearDown()
 
@@ -737,6 +748,15 @@ class DifferentialRecoveryRunTestCase(GpTestCase):
 
     @patch('gpsegrecovery.DifferentialRecovery.sync_pg_data', side_effect=Exception())
     def test_diff_recovery_sync_pg_data_exception(self, mock1):
+        self.diff_recovery_cmd.run()
+        self.assertEqual(1, self.mock_pg_stop_backup.call_count)
+        self.assertEqual(1, self.mock_logger.info.call_count)
+        self.assertEqual(
+            [call('Running differential recovery with progress output temporarily in /tmp/test_progress_file')],
+            self.mock_logger.info.call_args_list)
+
+    @patch('gpsegrecovery.DifferentialRecovery.sync_updated_files', side_effect=Exception())
+    def test_diff_recovery_sync_updated_files_exception(self, mock1):
         self.diff_recovery_cmd.run()
         self.assertEqual(1, self.mock_pg_stop_backup.call_count)
         self.assertEqual(1, self.mock_logger.info.call_count)

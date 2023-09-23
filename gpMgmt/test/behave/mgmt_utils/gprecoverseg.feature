@@ -2340,3 +2340,48 @@ Feature: gprecoverseg tests
         And user can start transactions
        Then the row count of table test_recoverseg in "postgres" should be 2000
        And the cluster is recovered in full and rebalanced
+
+    @demo_cluster
+    @concourse_cluster
+    Scenario Outline: differential recovery successfully synced updated files with checksum when <scenario> got down
+        Given the database is running
+          And the segments are synchronized
+          And all files in gpAdminLogs directory are deleted on all hosts in the cluster
+          And sql "DROP TABLE IF EXISTS test_recoverseg; CREATE TABLE test_recoverseg AS SELECT generate_series(1,1000) AS a;" is executed in "postgres" db
+          And user immediately stops all <args> processes for content 0
+          And the user waits until mirror on content 0 is down
+          And user can start transactions
+          And sql "INSERT INTO test_recoverseg(a) SELECT generate_series(201,1000);" is executed in "postgres" db
+         When the user runs "gprecoverseg -av --differential"
+         Then gprecoverseg should return a return code of 0
+          And gprecoverseg should print "Running Command: find .* -type f -newermt .*" to stdout
+          And gprecoverseg should print "List of modified files : .*base/.*/.*" to stdout
+          And gprecoverseg should print "Segments successfully recovered" to stdout
+          And verify that mirror on content 0 is up
+          And the segments are synchronized
+          And the cluster is rebalanced
+
+    Examples:
+        | scenario     | args               |
+        | primary      | primary            |
+        | mirror       | mirror             |
+
+    @demo_cluster
+    @concourse_cluster
+    Scenario: differential recovery successfully synced updated files with checksum when has tablespaces
+        Given the database is running
+          And user immediately stops all primary processes for content 1
+          And the user waits until mirror on content 1 is down
+          And user can start transactions
+          And a tablespace is created with data
+         When the user runs "gprecoverseg -av --differential"
+         Then gprecoverseg should return a return code of 0
+          And gprecoverseg should print "Running Command: find .* -type f -newermt .*" to stdout
+          And gprecoverseg should print "List of modified files : .*base/.*/.*" to stdout
+          And gprecoverseg should print "List of modified files : .*GPDB_7_.*/.*/.*" to stdout
+          And gprecoverseg should print "Segments successfully recovered" to stdout
+          And verify that mirror on content 1 is up
+          And the segments are synchronized
+          And the tablespace is valid
+          And the tablespace has valid symlink
+          And the database segments are in execute mode
