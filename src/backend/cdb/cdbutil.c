@@ -135,7 +135,7 @@ readGpSegConfigFromFTSFiles(int *total_dbs)
 	char	hostname[MAXHOSTNAMELEN];
 	char	address[MAXHOSTNAMELEN];
 	char    datadir[MAXPGPATH];
-	char	buf[MAXHOSTNAMELEN * 2 + 32];
+	char	buf[MAXHOSTNAMELEN * 2 + MAXPGPATH + 32];
 
 	Assert(!IsTransactionState());
 
