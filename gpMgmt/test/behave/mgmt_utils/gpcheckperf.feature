@@ -6,7 +6,29 @@ Feature: Tests for gpcheckperf
     Given the database is running
     When  the user runs "gpcheckperf -h cdw -h sdw1 -d /data/gpdata/ -r ds"
     Then  gpcheckperf should return a return code of 0
+    And   gpcheckperf should print "disk write avg time" to stdout
     And   gpcheckperf should print "disk write tot bytes" to stdout
+    And   gpcheckperf should print "disk read avg time" to stdout
+    And   gpcheckperf should print "disk read tot bytes" to stdout
+    And   gpcheckperf should print "stream tot bandwidth" to stdout
+
+  @concourse_cluster
+  Scenario: gpcheckperf runs disk and memory tests with --direct-io
+    Given the database is running
+    When  the user runs "gpcheckperf -h cdw -h sdw1 -d /data/gpdata/ -r ds --direct-io"
+    Then  gpcheckperf should return a return code of 0
+    And   gpcheckperf should print "disk write avg time" to stdout
+    And   gpcheckperf should print "disk write tot bytes" to stdout
+    And   gpcheckperf should print "disk read avg time" to stdout
+    And   gpcheckperf should print "disk read tot bytes" to stdout
+    And   gpcheckperf should print "stream tot bandwidth" to stdout
+
+  @concourse_cluster
+  Scenario: ensure gpcheckperf with --direct-io reports less io bandwidth
+    Given the database is running
+    When the user runs gpcheckperf io test with option "" and r/w bandwidth is saved
+    Then the user runs gpcheckperf io test with option "-direct-io" and r/w bandwidth is saved
+    Then validate io test bandwidth with and without direct io option
 
   @concourse_cluster
   Scenario: gpcheckperf runs runs sequential network test

@@ -30,6 +30,7 @@ Usage: gpcheckperf <options>
     --duration : how long to run network test (default 5 seconds)
     --netperf  : use netperf instead of gpnetbenchServer/gpnetbenchClient
     --buffer-size : the size of the send buffer in kilobytes ( default 8 kilobytes)
+    --direct-io : use direct I/O for data
 """
 
 import datetime
@@ -69,7 +70,7 @@ class Global():
     opt = {'-d': [], '-D': False, '-v': False, '-V': False, '-r': '',
            '-B': 1024 * 32, '-S': 0, '-h': [], '-f': None,
            '--duration': 15, '--net': None, '--netserver': 'gpnetbenchServer',
-           '--netclient': 'gpnetbenchClient', '--buffer-size': 0}
+           '--netclient': 'gpnetbenchClient', '--buffer-size': 0, '--direct-io': None}
 
 
 GV = Global()
@@ -204,7 +205,7 @@ def print_version():
 
 def parseCommandLine():
     try:
-        (options, args) = getopt.getopt(sys.argv[1:], '?vVDd:r:B:S:p:h:f:', ['duration=', 'version', 'netperf', 'buffer-size='])
+        (options, args) = getopt.getopt(sys.argv[1:], '?vVDd:r:B:S:p:h:f:', ['duration=', 'version', 'netperf', 'buffer-size=', 'direct-io'])
     except Exception as e:
         usage('Error: ' + str(e))
         exit(1)
@@ -229,6 +230,8 @@ def parseCommandLine():
             GV.opt['--netclient'] = 'netperf'
         elif switch == '--buffer-size':
             GV.opt[switch] = int(val)
+        elif switch == '--direct-io':
+            GV.opt[switch] = True
 
     # run default tests (if not specified)
     if GV.opt['-r'] == '':
@@ -470,6 +473,8 @@ def runDiskWriteTest(multidd):
         cmd = cmd + (' -B %d' % GV.opt['-B'])
     if GV.opt['-S']:
         cmd = cmd + (' -S %d' % GV.opt['-S'])
+    if GV.opt['--direct-io']:
+        cmd = cmd + ' -D write'
     (ok, out) = gpssh(cmd, GV.opt['-V'])
     if not ok:
         sys.exit('[Error] command failed: %s with output: %s' % (cmd, out))
@@ -489,6 +494,8 @@ def runDiskReadTest(multidd):
         cmd = cmd + (' -B %d' % GV.opt['-B'])
     if GV.opt['-S']:
         cmd = cmd + (' -S %d' % GV.opt['-S'])
+    if GV.opt['--direct-io']:
+        cmd = cmd + ' -D read'
     (ok, out) = gpssh(cmd, GV.opt['-V'])
     if not ok:
         sys.exit('[Error] command failed: %s with output: %s' % (cmd, out))
