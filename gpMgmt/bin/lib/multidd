@@ -10,6 +10,7 @@ Usage: multidd {-i infile} {-o outfile} [-B blocksz] [-S filesz]
 			[default=8KB]
 	-S filesz	where filesz is the size of the file to write
 			[default=2X system RAM]
+    -D read/write  option to provide direct I/O for read or write data
 
 	Multiple -i and -o arguments may be specified but they must pair up.
 
@@ -94,7 +95,7 @@ def parseMemorySize(line):
 def parseCommandLine():
     global opt
     try:
-        (options, args) = getopt.getopt(sys.argv[1:], '?i:o:B:S:')
+        (options, args) = getopt.getopt(sys.argv[1:], '?i:o:B:S:D:')
     except:
         e = sys.exc_info()
         usage('Error: %s %s' % (e[0], e[1]))
@@ -106,6 +107,8 @@ def parseCommandLine():
             opt[switch].append(val)
         elif switch[1] in 'BS':
             opt[switch] = parseMemorySize(val)
+        elif switch == '-D':
+            opt[switch] = val
 
     if opt['-S'] == '?':
         sys.exit('Error: unable to obtain system RAM size')
@@ -121,7 +124,7 @@ def parseCommandLine():
         usage('Error: missing -i and -o parameters')
 
 
-opt = {'-i': [], '-o': [], '-B': parseMemorySize('8KB'), '-S': 0}
+opt = {'-i': [], '-o': [], '-B': parseMemorySize('8KB'), '-S': 0, '-D': ''}
 parseCommandLine()
 if opt['-S'] == 0:
     opt['-S'] = getMemory() * 2
@@ -132,10 +135,15 @@ pfile = []
 blocksz = opt['-B']
 cnt = int(math.ceil(opt['-S'] / blocksz))
 totalBytes = 0
+directIOFlag = ''
 for i in range(len(opt['-i'])):
     ifile = opt['-i'][i]
     ofile = opt['-o'][i]
-    cmd.append('dd if=%s of=%s count=%d bs=%d' % (ifile, ofile, cnt, blocksz))
+    if opt['-D'] == 'read':
+        directIOFlag = 'iflag=direct'
+    elif opt['-D'] == 'write':
+        directIOFlag = 'oflag=direct'
+    cmd.append('dd if=%s of=%s count=%d bs=%d %s' % (ifile, ofile, cnt, blocksz, directIOFlag))
     totalBytes += cnt * blocksz
 
 for c in cmd:
