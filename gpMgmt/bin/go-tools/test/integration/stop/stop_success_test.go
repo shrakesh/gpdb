@@ -1,10 +1,11 @@
 package stop
 
 import (
-	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
-	"github.com/greenplum-db/gpdb/gp/utils"
 	"strings"
 	"testing"
+
+	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
+	"github.com/greenplum-db/gpdb/gpservices/utils"
 )
 
 func TestStopSuccess(t *testing.T) {

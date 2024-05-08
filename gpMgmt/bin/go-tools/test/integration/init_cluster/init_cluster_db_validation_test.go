@@ -12,9 +12,9 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
-	"github.com/greenplum-db/gpdb/gp/cli"
-	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
+	"github.com/greenplum-db/gpdb/gpservices/cli"
+	"github.com/greenplum-db/gpdb/gpservices/constants"
+	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
 )
 
 func TestLocaleValidation(t *testing.T) {

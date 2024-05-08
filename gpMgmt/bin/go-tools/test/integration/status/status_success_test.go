@@ -1,10 +1,11 @@
 package status
 
 import (
-	"github.com/greenplum-db/gpdb/gp/hub"
-	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
 	"strings"
 	"testing"
+
+	"github.com/greenplum-db/gpdb/gpservices/hub"
+	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
 )
 
 var gpCfg hub.Config

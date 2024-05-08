@@ -2,10 +2,11 @@ package status
 
 import (
 	"flag"
-	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
-	"github.com/greenplum-db/gpdb/gp/utils"
 	"os"
 	"testing"
+
+	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
+	"github.com/greenplum-db/gpdb/gpservices/utils"
 )
 
 var (

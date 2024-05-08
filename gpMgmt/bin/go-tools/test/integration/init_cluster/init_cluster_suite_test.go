@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
+	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
 )
 
 var (

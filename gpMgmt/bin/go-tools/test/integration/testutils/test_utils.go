@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/hub"
-	"github.com/greenplum-db/gpdb/gp/utils"
+	"github.com/greenplum-db/gpdb/gpservices/constants"
+	"github.com/greenplum-db/gpdb/gpservices/hub"
+	"github.com/greenplum-db/gpdb/gpservices/utils"
 )
 
 type Command struct {

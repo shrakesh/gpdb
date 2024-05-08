@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenplum-db/gpdb/gp/cli"
-	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
+	"github.com/greenplum-db/gpdb/gpservices/cli"
+	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
 )
 
 func TestEnvValidation(t *testing.T) {

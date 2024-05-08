@@ -1,10 +1,11 @@
 package status
 
 import (
-	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
 )
 
 func TestStatusFailures(t *testing.T) {

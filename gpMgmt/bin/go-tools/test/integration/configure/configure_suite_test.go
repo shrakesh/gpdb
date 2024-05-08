@@ -7,11 +7,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/hub"
-	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
-	"github.com/greenplum-db/gpdb/gp/utils"
-	"github.com/greenplum-db/gpdb/gp/utils/greenplum"
+	"github.com/greenplum-db/gpdb/gpservices/constants"
+	"github.com/greenplum-db/gpdb/gpservices/hub"
+	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
+	"github.com/greenplum-db/gpdb/gpservices/utils"
+	"github.com/greenplum-db/gpdb/gpservices/utils/greenplum"
 )
 
 const (
