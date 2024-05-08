@@ -450,8 +450,8 @@ class GpAddMirrorsProgram:
         maxAllowedPort = 61000
         minAllowedPort = 6432
 
-        minPort = min([seg.getSegmentPort() for seg in gpArray.getDbList()])
-        maxPort = max([seg.getSegmentPort() for seg in gpArray.getDbList()])
+        minPort = min([seg.getSegmentPort() for seg in gpArray.getSegDbList()])
+        maxPort = max([seg.getSegmentPort() for seg in gpArray.getSegDbList()])
 
         if self.__options.mirrorOffset < 0:
             minPort = minPort + 3 * self.__options.mirrorOffset
