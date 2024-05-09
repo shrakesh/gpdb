@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
+	"github.com/greenplum-db/gpdb/gpservice/test/integration/testutils"
 )
 
 func TestStopFailsWithoutSvcRunning(t *testing.T) {

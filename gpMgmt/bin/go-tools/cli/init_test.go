@@ -1576,14 +1576,14 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		}
 	})
 
-	t.Run("fails if IsGpServicesEnabled returns error", func(t *testing.T) {
+	t.Run("fails if IsGpServiceEnabled returns error", func(t *testing.T) {
 		defer resetCLIVars()
 		defer resetConfHostnames()
 		defer initializeRequest()
 		cli.Conf.Hostnames = []string{"cdw", "sdw1"}
 		expectedError := "following hostnames [sdw2 sdw2] do not have gp services configured. Please configure the services"
 
-		cli.IsGpServicesEnabled = func(req *idl.MakeClusterRequest) error {
+		cli.IsGpServiceEnabled = func(req *idl.MakeClusterRequest) error {
 			return fmt.Errorf(expectedError)
 		}
 
@@ -1915,7 +1915,7 @@ func CommandFailure() {
 	os.Exit(1)
 }
 
-func TestIsGpServicesEnabledFn(t *testing.T) {
+func TestIsGpServiceEnabledFn(t *testing.T) {
 	setupTest(t)
 	defer teardownTest()
 	coordinator := &idl.Segment{
@@ -1966,7 +1966,7 @@ func TestIsGpServicesEnabledFn(t *testing.T) {
 		defer resetConfHostnames()
 		cli.Conf.Hostnames = []string{"cdw", "sdw1"}
 		expectedError := "following hostnames [sdw2] do not have gp services configured. Please configure the services"
-		err := cli.IsGpServicesEnabled(&idl.MakeClusterRequest{GpArray: &gparray})
+		err := cli.IsGpServiceEnabled(&idl.MakeClusterRequest{GpArray: &gparray})
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}

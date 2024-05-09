@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greenplum-db/gpdb/gpservices/hub"
-	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
+	"github.com/greenplum-db/gpdb/gpservice/hub"
+	"github.com/greenplum-db/gpdb/gpservice/test/integration/testutils"
 )
 
 var gpCfg hub.Config

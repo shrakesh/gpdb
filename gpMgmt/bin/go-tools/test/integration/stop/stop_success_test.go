@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
-	"github.com/greenplum-db/gpdb/gpservices/utils"
+	"github.com/greenplum-db/gpdb/gpservice/test/integration/testutils"
+	"github.com/greenplum-db/gpdb/gpservice/utils"
 )
 
 func TestStopSuccess(t *testing.T) {

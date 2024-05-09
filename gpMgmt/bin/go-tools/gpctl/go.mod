@@ -56,10 +56,10 @@ require (
 require (
 	github.com/golang/mock v1.6.0
 	github.com/greenplum-db/gp-common-go-libs v1.0.17
-	github.com/greenplum-db/gpdb/gpservices v0.0.0-00010101000000-000000000000
+	github.com/greenplum-db/gpdb/gpservice v0.0.0-00010101000000-000000000000
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.18.2
 )
 
-replace github.com/greenplum-db/gpdb/gpservices => ../gpservices
+replace github.com/greenplum-db/gpdb/gpservice => ../gpservice

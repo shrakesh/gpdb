@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greenplum-db/gpdb/gpservices/utils/greenplum"
+	"github.com/greenplum-db/gpdb/gpservice/utils/greenplum"
 )
 
 func FilesExistsOnAgents(t *testing.T, file string, hosts []string) bool {

@@ -70,7 +70,7 @@ var (
 	ParseStreamResponse                  = ParseStreamResponseFn
 	GetSystemLocale                      = GetSystemLocaleFn
 	SetDefaultLocale                     = SetDefaultLocaleFn
-	IsGpServicesEnabled                  = IsGpServicesEnabledFn
+	IsGpServiceEnabled                  = IsGpServiceEnabledFn
 )
 var cliForceFlag bool
 var ContainsMirror bool
@@ -697,7 +697,7 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 	}
 
 	// check if gp services enabled on hosts
-	err = IsGpServicesEnabled(request)
+	err = IsGpServiceEnabled(request)
 	if err != nil {
 		return err
 	}
@@ -820,9 +820,9 @@ func SetDefaultLocaleFn(locale *idl.Locale) error {
 }
 
 /*
-IsGpServicesEnabledFn returns error if any of the hosts from config does not have gp services enabled
+IsGpServiceEnabledFn returns error if any of the hosts from config does not have gp services enabled
 */
-func IsGpServicesEnabledFn(req *idl.MakeClusterRequest) error {
+func IsGpServiceEnabledFn(req *idl.MakeClusterRequest) error {
 	hostnames = []string{req.GpArray.Coordinator.HostName}
 	for _, seg := range req.GetPrimarySegments() {
 		hostnames = append(hostnames, seg.HostName)

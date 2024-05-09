@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greenplum-db/gpdb/gpservices/cli"
-	"github.com/greenplum-db/gpdb/gpservices/test/integration/testutils"
+	"github.com/greenplum-db/gpdb/gpservice/cli"
+	"github.com/greenplum-db/gpdb/gpservice/test/integration/testutils"
 	"github.com/spf13/viper"
 )
 
