@@ -7,11 +7,11 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/greenplum-db/gpdb/gpctl/cli"
-	"github.com/greenplum-db/gpdb/gpservices/hub"
-	"github.com/greenplum-db/gpdb/gpservices/idl"
-	"github.com/greenplum-db/gpdb/gpservices/idl/mock_idl"
-	"github.com/greenplum-db/gpdb/gpservices/testutils"
-	"github.com/greenplum-db/gpdb/gpservices/utils"
+	"github.com/greenplum-db/gpdb/gpservice/hub"
+	"github.com/greenplum-db/gpdb/gpservice/idl"
+	"github.com/greenplum-db/gpdb/gpservice/idl/mock_idl"
+	"github.com/greenplum-db/gpdb/gpservice/testutils"
+	"github.com/greenplum-db/gpdb/gpservice/utils"
 )
 
 func TestPrintServicesStatus(t *testing.T) {

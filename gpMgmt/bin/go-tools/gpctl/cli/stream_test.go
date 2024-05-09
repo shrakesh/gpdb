@@ -9,8 +9,8 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gpctl/cli"
-	"github.com/greenplum-db/gpdb/gpservices/idl"
-	"github.com/greenplum-db/gpdb/gpservices/testutils"
+	"github.com/greenplum-db/gpdb/gpservice/idl"
+	"github.com/greenplum-db/gpdb/gpservice/testutils"
 )
 
 type msgStream struct {

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gpdb/gpservices/idl"
-	"github.com/greenplum-db/gpdb/gpservices/utils"
+	"github.com/greenplum-db/gpdb/gpservice/idl"
+	"github.com/greenplum-db/gpdb/gpservice/utils"
 	"github.com/vbauerster/mpb/v8"
 )
 

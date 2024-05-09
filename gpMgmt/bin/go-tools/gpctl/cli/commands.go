@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gpdb/gpservices/constants"
-	"github.com/greenplum-db/gpdb/gpservices/hub"
-	"github.com/greenplum-db/gpdb/gpservices/idl"
+	"github.com/greenplum-db/gpdb/gpservice/constants"
+	"github.com/greenplum-db/gpdb/gpservice/hub"
+	"github.com/greenplum-db/gpdb/gpservice/idl"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )

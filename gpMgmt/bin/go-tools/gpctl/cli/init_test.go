@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greenplum-db/gpdb/gpservices/constants"
+	"github.com/greenplum-db/gpdb/gpservice/constants"
 
 	"github.com/golang/mock/gomock"
 	"github.com/spf13/cobra"
@@ -16,12 +16,12 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gpctl/cli"
-	"github.com/greenplum-db/gpdb/gpservices/hub"
-	"github.com/greenplum-db/gpdb/gpservices/idl"
-	"github.com/greenplum-db/gpdb/gpservices/idl/mock_idl"
-	"github.com/greenplum-db/gpdb/gpservices/testutils"
-	"github.com/greenplum-db/gpdb/gpservices/testutils/exectest"
-	"github.com/greenplum-db/gpdb/gpservices/utils"
+	"github.com/greenplum-db/gpdb/gpservice/hub"
+	"github.com/greenplum-db/gpdb/gpservice/idl"
+	"github.com/greenplum-db/gpdb/gpservice/idl/mock_idl"
+	"github.com/greenplum-db/gpdb/gpservice/testutils"
+	"github.com/greenplum-db/gpdb/gpservice/testutils/exectest"
+	"github.com/greenplum-db/gpdb/gpservice/utils"
 )
 
 func init() {
