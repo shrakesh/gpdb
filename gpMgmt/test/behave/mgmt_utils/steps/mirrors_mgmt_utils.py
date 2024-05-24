@@ -206,6 +206,26 @@ def impl(context, options=" "):
     add_mirrors(context, options)
 
 
+@then('mirror port should have offset of {offset} from primary')
+def impl(context, offset=1000):
+    segments = GpArray.initFromCatalog(dbconn.DbURL()).getSegDbList()
+    minPrimaryPort = min([seg.getSegmentPort() for seg in segments if seg.isSegmentPrimary()])
+    minMirrorPort = min([seg.getSegmentPort() for seg in segments if seg.isSegmentMirror()])
+
+    if (abs(minMirrorPort - minPrimaryPort) != int(offset)):
+        raise Exception("port offset validation failed for offset: {} where primary port: {} and mirror port: {}".format(offset, minPrimaryPort, minMirrorPort))
+
+
+@when('gpaddmirrors adds mirror with port offset "{offset}"')
+def impl(context, offset=1000):
+
+    command = "gpaddmirrors -p %s -s -a" % (offset)
+    make_temp_dir(context, context.mirror_context.working_directory[0], '0700')
+    mirror_datadir = context.temp_base_dir
+
+    context.execute_steps(u'''Then the user runs {} and selects {}'''.format(command, mirror_datadir))
+
+
 @given('gpaddmirrors adds mirrors with temporary data dir')
 def impl(context):
     context.mirror_config = _generate_input_config()

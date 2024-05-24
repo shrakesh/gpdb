@@ -190,6 +190,18 @@ Feature: Tests for gpaddmirrors
         And check segment conf: postgresql.conf
         And all files in gpAdminLogs directory are deleted
 
+    Scenario: gpaddmirrors should create mirror on offset to primary port
+        Given the cluster is generated with "1" primaries only
+        And all files in gpAdminLogs directory are deleted
+        And a gaddmirrors directory under '/tmp' with mode '0700' is created
+        When gpaddmirrors adds mirror with port offset "500"
+        Then gpaddmirrors should return a return code of 0
+        And all the segments are running
+        And mirror port should have offset of 500 from primary
+        And check segment conf: postgresql.conf
+        And all files in gpAdminLogs directory are deleted
+
+
 
 
 #    Scenario: gpaddmirrors deletes progress file on SIGINT
