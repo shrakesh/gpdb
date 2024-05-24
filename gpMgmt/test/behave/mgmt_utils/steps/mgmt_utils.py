@@ -4391,3 +4391,44 @@ def step_impl(context):
 @given(u'the cluster is running in IC proxy mode with new proxy address {address}')
 def step_impl(context, address):
     set_ic_proxy_and_address(context, address)
+
+
+def get_gpcheckperf_bw_value(context):
+
+    result = {}
+    lines = context.stdout_message.split('\n')
+
+    for line in lines:
+        if "write tot bandwidth" in line:
+            result['write'] = float(line.split(':')[1].strip())
+        if "read tot bandwidth" in line:
+            result['read'] = float(line.split(':')[1].strip())
+
+    return result
+
+
+@when('the user runs gpcheckperf io test with option {option} and r/w bandwidth is saved')
+@then('the user runs gpcheckperf io test with option {option} and r/w bandwidth is saved')
+def impl(context, option):
+
+    command = "gpcheckperf -h cdw -h sdw1 -d /data/gpdata/ -r d"
+    run_gpcommand(context, command)
+    check_return_code(context, 0)
+    context.io_perf_bandwidth = get_gpcheckperf_bw_value(context)
+
+    command = "gpcheckperf -h cdw -h sdw1 -d /data/gpdata/ -r d --direct-io"
+    run_gpcommand(context, command)
+    check_return_code(context, 0)
+    context.direct_io_perf_bandwidth = get_gpcheckperf_bw_value(context)
+
+
+@then('validate io test bandwidth with and without direct io option')
+def impl(context):
+
+    if context.io_perf_bandwidth is None or len(context.io_perf_bandwidth) <= 0 or \
+        context.direct_io_perf_bandwidth is None or len(context.direct_io_perf_bandwidth) <= 0:
+            raise Exception("no gpcheckperf results found in context")
+
+    if (context.direct_io_perf_bandwidth["write"] >= context.io_perf_bandwidth["write"] \
+        or context.direct_io_perf_bandwidth["read"] >= context.io_perf_bandwidth["read"]):
+            raise Exception("validation failed, option -direct-io gives more bandwidth")
